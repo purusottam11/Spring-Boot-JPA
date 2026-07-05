@@ -1,0 +1,1707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spring Data JPA + MySQL — The Instagram Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0E0E16; --panel:#15151F; --panel2:#1B1B2A; --border:#282840; --border-soft:#20203400;
+  --text:#ECEAF4; --muted:#A5A2BA; --faint:#6E6B86;
+  --ig-purple:#833AB4; --ig-pink:#E1306C; --ig-orange:#F77737; --ig-yellow:#FCAF45;
+  --grad:linear-gradient(135deg,#833AB4 0%,#E1306C 45%,#F77737 80%,#FCAF45 100%);
+  --code-bg:#0C0C15; --code-border:#242438;
+  --good:#3DDC97; --warn:#FCAF45; --bad:#FF6B81; --core:#A06CE8;
+  --sidebar-w:288px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
+  .anim{display:none}
+}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:'IBM Plex Sans',system-ui,-apple-system,sans-serif;
+  font-size:15.5px; line-height:1.65;
+}
+::selection{background:#E1306C55}
+
+/* ---------- top progress bar ---------- */
+#progress{position:fixed;top:0;left:0;height:3px;width:0%;background:var(--grad);z-index:200}
+
+/* ---------- topbar ---------- */
+.topbar{
+  position:fixed;top:0;left:0;right:0;height:54px;z-index:100;
+  display:flex;align-items:center;gap:14px;padding:0 18px;
+  background:rgba(14,14,22,.85);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+.brand{font-family:'Space Grotesk';font-weight:700;font-size:15px;letter-spacing:.02em;white-space:nowrap}
+.brand .g{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.topbar .spacer{flex:1}
+.tbtn{
+  font-family:'JetBrains Mono';font-size:11.5px;color:var(--muted);
+  background:var(--panel);border:1px solid var(--border);border-radius:8px;
+  padding:6px 11px;cursor:pointer;transition:color .15s,border-color .15s;
+}
+.tbtn:hover{color:var(--text);border-color:var(--ig-pink)}
+.tbtn:focus-visible, a:focus-visible, button:focus-visible, input:focus-visible{outline:2px solid var(--ig-pink);outline-offset:2px}
+#menuBtn{display:none}
+
+/* ---------- sidebar ---------- */
+.sidebar{
+  position:fixed;top:54px;left:0;bottom:0;width:var(--sidebar-w);
+  background:var(--panel);border-right:1px solid var(--border);
+  overflow-y:auto;padding:16px 14px 40px;z-index:90;
+}
+.sidebar::-webkit-scrollbar{width:8px}
+.sidebar::-webkit-scrollbar-thumb{background:#2C2C44;border-radius:4px}
+#search{
+  width:100%;padding:8px 12px;border-radius:9px;margin-bottom:14px;
+  background:var(--bg);border:1px solid var(--border);color:var(--text);
+  font-family:'JetBrains Mono';font-size:12px;
+}
+#search::placeholder{color:var(--faint)}
+.toc-part{
+  font-family:'JetBrains Mono';font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--faint);margin:16px 6px 6px;
+}
+.toc a{
+  display:flex;gap:9px;align-items:baseline;text-decoration:none;color:var(--muted);
+  font-size:13px;padding:5px 8px;border-radius:7px;border-left:2px solid transparent;
+}
+.toc a .n{font-family:'JetBrains Mono';font-size:10.5px;color:var(--faint);min-width:18px}
+.toc a:hover{color:var(--text);background:var(--panel2)}
+.toc a.active{color:var(--text);background:var(--panel2);border-left:2px solid var(--ig-pink)}
+.toc a.active .n{color:var(--ig-pink)}
+.toc a.hidden{display:none}
+
+/* ---------- main ---------- */
+main{margin-left:var(--sidebar-w);padding:88px 34px 120px;max-width:calc(var(--sidebar-w) + 900px)}
+.wrap{max-width:830px;margin:0 auto}
+
+/* ---------- hero ---------- */
+.hero{margin-bottom:44px}
+.hero .eyebrow{
+  font-family:'JetBrains Mono';font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--ig-orange);margin-bottom:12px;
+}
+.hero h1{
+  font-family:'Space Grotesk';font-weight:700;font-size:clamp(30px,4.5vw,46px);
+  line-height:1.12;letter-spacing:-.015em;margin-bottom:16px;
+}
+.hero h1 .g{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{color:var(--muted);max-width:640px;font-size:16px}
+.hero .meta{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.chip{
+  font-family:'JetBrains Mono';font-size:11px;color:var(--muted);
+  border:1px solid var(--border);border-radius:999px;padding:5px 12px;background:var(--panel);
+}
+.legend{display:flex;gap:14px;margin-top:14px;flex-wrap:wrap;font-size:12px;color:var(--faint)}
+.legend b{font-weight:600}
+
+/* ---------- section cards ---------- */
+.part-head{
+  font-family:'Space Grotesk';font-weight:700;font-size:13px;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--faint);margin:52px 0 16px;display:flex;align-items:center;gap:12px;
+}
+.part-head::after{content:"";flex:1;height:1px;background:var(--border)}
+.sec{
+  position:relative;background:var(--panel);border:1px solid var(--border);
+  border-radius:14px;margin-bottom:18px;overflow:hidden;
+}
+.sec::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--grad);opacity:.9}
+.sec-head{
+  width:100%;display:flex;align-items:center;gap:14px;text-align:left;
+  background:none;border:none;color:var(--text);cursor:pointer;
+  padding:17px 20px 17px 24px;
+}
+.sec-head .num{
+  font-family:'JetBrains Mono';font-weight:700;font-size:13px;
+  background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;
+  min-width:26px;
+}
+.sec-head h2{font-family:'Space Grotesk';font-weight:700;font-size:18.5px;letter-spacing:-.01em;flex:1}
+.badge{
+  font-family:'JetBrains Mono';font-size:9.5px;font-weight:700;letter-spacing:.12em;
+  padding:3px 9px;border-radius:999px;text-transform:uppercase;
+}
+.b-basics{color:var(--good);border:1px solid #3DDC9744;background:#3DDC9712}
+.b-core{color:var(--core);border:1px solid #A06CE844;background:#A06CE812}
+.b-adv{color:var(--ig-pink);border:1px solid #E1306C44;background:#E1306C12}
+.chev{color:var(--faint);transition:transform .25s;font-size:12px}
+.sec.open .chev{transform:rotate(90deg)}
+.sec-body{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s ease}
+.sec.open .sec-body{grid-template-rows:1fr}
+.sec-inner{overflow:hidden}
+.sec-content{padding:2px 24px 26px}
+.sec-content > p{margin-bottom:14px;color:#D6D3E4}
+.sec-content p.lead{font-size:16px;color:var(--text)}
+.sec-content h3{
+  font-family:'Space Grotesk';font-size:15px;font-weight:700;margin:24px 0 10px;
+  color:var(--text);
+}
+.sec-content ul,.sec-content ol{margin:0 0 14px 22px;color:#D6D3E4}
+.sec-content li{margin-bottom:6px}
+.sec-content strong{color:var(--text)}
+code.inline{
+  font-family:'JetBrains Mono';font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:5px;padding:1.5px 6px;color:#F0BDD3;
+}
+.analogy{
+  border:1px dashed #3B3B5C;border-radius:10px;padding:12px 16px;margin:14px 0;
+  color:var(--muted);font-size:14px;font-style:italic;background:#16162200;
+}
+.analogy::before{content:"🧠 Analogy — ";font-style:normal;color:var(--faint);font-family:'JetBrains Mono';font-size:11px;letter-spacing:.08em}
+
+/* Instagram example callout */
+.ig{position:relative;border-radius:12px;padding:1.5px;background:var(--grad);margin:18px 0}
+.ig-in{background:#141420;border-radius:11px;padding:14px 18px}
+.ig-label{
+  font-family:'JetBrains Mono';font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;
+  display:block;margin-bottom:6px;
+}
+.ig-in p{color:#DEDBEC;font-size:14.5px;margin:0}
+.ig-in p + p{margin-top:8px}
+
+/* pitfall / tip */
+.pit,.tip{border-radius:10px;padding:13px 16px;margin:16px 0;font-size:14px}
+.pit{background:#FF6B8110;border:1px solid #FF6B8138}
+.pit::before{content:"⚠ Pitfall";display:block;font-family:'JetBrains Mono';font-size:10.5px;letter-spacing:.12em;color:var(--bad);margin-bottom:5px;text-transform:uppercase;font-weight:700}
+.tip{background:#3DDC9710;border:1px solid #3DDC9738}
+.tip::before{content:"✓ Tip";display:block;font-family:'JetBrains Mono';font-size:10.5px;letter-spacing:.12em;color:var(--good);margin-bottom:5px;text-transform:uppercase;font-weight:700}
+
+/* ---------- code blocks ---------- */
+.codebox{border:1px solid var(--code-border);border-radius:11px;overflow:hidden;margin:16px 0;background:var(--code-bg)}
+.codebar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:7px 14px;background:#12121E;border-bottom:1px solid var(--code-border);
+}
+.codebar .fname{font-family:'JetBrains Mono';font-size:11px;color:var(--faint)}
+.copy{
+  font-family:'JetBrains Mono';font-size:10.5px;color:var(--muted);background:none;
+  border:1px solid var(--border);border-radius:6px;padding:3px 10px;cursor:pointer;
+}
+.copy:hover{color:var(--text);border-color:var(--ig-pink)}
+pre[class*="language-"]{margin:0;padding:15px 17px;overflow:auto;background:transparent;font-size:13px;line-height:1.6}
+code[class*="language-"]{font-family:'JetBrains Mono',monospace;font-size:13px;color:#D8D5E6;text-shadow:none;background:none}
+pre::-webkit-scrollbar{height:8px}
+pre::-webkit-scrollbar-thumb{background:#2C2C44;border-radius:4px}
+/* prism token palette (custom, matches theme) */
+.token.comment{color:#68657E;font-style:italic}
+.token.keyword{color:#B18CFF}
+.token.string,.token.char{color:#FCAF45}
+.token.annotation,.token.punctuation.annotation{color:#F77737}
+.token.function{color:#FF79A8}
+.token.number,.token.boolean{color:#5EEAD4}
+.token.class-name{color:#7DC4FF}
+.token.operator,.token.punctuation{color:#9895B0}
+.token.generics .token.class-name{color:#7DC4FF}
+.token.namespace{opacity:.8}
+.token.property,.token.tag,.token.attr-name{color:#FF79A8}
+.token.attr-value{color:#FCAF45}
+.token.key.atrule{color:#B18CFF}
+
+/* ---------- tables ---------- */
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px}
+th{
+  font-family:'JetBrains Mono';font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--faint);text-align:left;padding:9px 12px;border-bottom:1px solid var(--border);
+}
+td{padding:9px 12px;border-bottom:1px solid #1F1F32;color:#D6D3E4;vertical-align:top}
+tr:last-child td{border-bottom:none}
+td code{font-family:'JetBrains Mono';font-size:12px;color:#F0BDD3}
+.ok{color:var(--good)} .no{color:var(--bad)} .mid{color:var(--warn)}
+
+/* ---------- svg diagrams ---------- */
+.diagram{margin:20px 0;border:1px solid var(--border);border-radius:12px;background:#111119;padding:14px;overflow-x:auto}
+.diagram svg{display:block;margin:0 auto;max-width:100%;height:auto}
+.dg-caption{font-family:'JetBrains Mono';font-size:11px;color:var(--faint);text-align:center;margin-top:10px}
+
+/* lifecycle state boxes */
+.states{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:16px 0}
+.state{border:1px solid var(--border);border-radius:10px;padding:12px 14px;background:var(--panel2)}
+.state b{font-family:'Space Grotesk';display:block;margin-bottom:4px;font-size:14px}
+.state span{font-size:12.5px;color:var(--muted)}
+
+footer{margin-left:var(--sidebar-w);padding:30px;text-align:center;color:var(--faint);font-size:12.5px;font-family:'JetBrains Mono';border-top:1px solid var(--border)}
+
+/* ---------- responsive ---------- */
+@media (max-width:980px){
+  .sidebar{transform:translateX(-100%);transition:transform .25s}
+  .sidebar.openNav{transform:translateX(0)}
+  main,footer{margin-left:0}
+  #menuBtn{display:inline-block}
+  main{padding:80px 18px 90px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+
+<div class="topbar">
+  <button class="tbtn" id="menuBtn" aria-label="Toggle navigation">☰</button>
+  <div class="brand">Spring Data JPA <span class="g">×</span> MySQL <span class="g">×</span> Instagram</div>
+  <div class="spacer"></div>
+  <button class="tbtn" id="expandAll">Expand all</button>
+  <button class="tbtn" id="collapseAll">Collapse all</button>
+</div>
+
+<nav class="sidebar" id="sidebar" aria-label="Table of contents">
+  <input id="search" type="search" placeholder="/ filter chapters…" aria-label="Filter chapters">
+  <div class="toc">
+    <div class="toc-part">I · Foundations</div>
+    <a href="#s01"><span class="n">01</span>Architecture: how it fits</a>
+    <a href="#s02"><span class="n">02</span>Project setup &amp; config</a>
+    <a href="#s03"><span class="n">03</span>The Instagram schema</a>
+    <div class="toc-part">II · Mapping</div>
+    <a href="#s04"><span class="n">04</span>Entities &amp; annotations</a>
+    <a href="#s05"><span class="n">05</span>One-to-One</a>
+    <a href="#s06"><span class="n">06</span>Many-to-One / One-to-Many</a>
+    <a href="#s07"><span class="n">07</span>Many-to-Many</a>
+    <div class="toc-part">III · Repositories &amp; Queries</div>
+    <a href="#s08"><span class="n">08</span>Repositories &amp; CRUD</a>
+    <a href="#s09"><span class="n">09</span>Derived query methods</a>
+    <a href="#s10"><span class="n">10</span>JPQL with @Query</a>
+    <a href="#s11"><span class="n">11</span>Native SQL</a>
+    <a href="#s12"><span class="n">12</span>Criteria API</a>
+    <a href="#s13"><span class="n">13</span>Specifications</a>
+    <a href="#s14"><span class="n">14</span>Pagination &amp; sorting</a>
+    <div class="toc-part">IV · Transactions &amp; Context</div>
+    <a href="#s15"><span class="n">15</span>Transactions &amp; rollback</a>
+    <a href="#s16"><span class="n">16</span>Propagation</a>
+    <a href="#s17"><span class="n">17</span>Isolation levels</a>
+    <a href="#s18"><span class="n">18</span>Entity lifecycle</a>
+    <a href="#s19"><span class="n">19</span>Dirty checking &amp; L1 cache</a>
+    <a href="#s20"><span class="n">20</span>Fetch types: LAZY / EAGER</a>
+    <a href="#s21"><span class="n">21</span>Cascade &amp; orphanRemoval</a>
+    <div class="toc-part">V · Advanced</div>
+    <a href="#s22"><span class="n">22</span>Optimistic &amp; pessimistic locking</a>
+    <a href="#s23"><span class="n">23</span>Indexes &amp; constraints</a>
+    <a href="#s24"><span class="n">24</span>DTO projections</a>
+    <a href="#s25"><span class="n">25</span>Auditing</a>
+    <a href="#s26"><span class="n">26</span>Batch processing</a>
+    <a href="#s27"><span class="n">27</span>N+1 &amp; performance</a>
+    <div class="toc-part">VI · Production-grade</div>
+    <a href="#s28"><span class="n">28</span>Validation</a>
+    <a href="#s29"><span class="n">29</span>Exception handling</a>
+    <a href="#s30"><span class="n">30</span>Best practices &amp; pitfalls</a>
+  </div>
+</nav>
+
+<main>
+<div class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">MySQL · Spring Boot 3 · Spring Data JPA · Hibernate 6</div>
+  <h1>Persistence, explained by <span class="g">building Instagram</span></h1>
+  <p>One app — users, profiles, posts, comments, likes, followers — carried through 30 chapters, from your first <code class="inline">@Entity</code> to N+1 hunting, locking, and batch writes. Every chapter: a plain explanation, the Instagram case, and a snippet you can lift.</p>
+  <div class="meta">
+    <span class="chip">Java 17+</span>
+    <span class="chip">Spring Boot 3.x</span>
+    <span class="chip">Hibernate 6</span>
+    <span class="chip">MySQL 8 / InnoDB</span>
+  </div>
+  <div class="legend">
+    <span><b style="color:var(--good)">●</b> Basics</span>
+    <span><b style="color:var(--core)">●</b> Core</span>
+    <span><b style="color:var(--ig-pink)">●</b> Advanced</span>
+    <span>— click any chapter to expand</span>
+  </div>
+</header>
+<div class="part-head">Part I — Foundations</div>
+
+<!-- ============ 01 ARCHITECTURE ============ -->
+<section class="sec open" id="s01">
+  <button class="sec-head" aria-expanded="true"><span class="num">01</span><h2>Architecture: how Spring Boot, JPA, Hibernate &amp; MySQL fit together</h2><span class="badge b-basics">Basics</span><span class="chev">▶</span></button>
+  <div class="sec-body"><div class="sec-inner"><div class="sec-content">
+    <p class="lead">Three names, three different things. <strong>JPA</strong> is a specification (just interfaces + annotations, zero code that runs). <strong>Hibernate</strong> is the implementation that actually generates SQL and talks JDBC. <strong>Spring Data JPA</strong> sits on top and writes your DAO layer for you — you declare a repository interface, Spring builds a proxy implementing it at startup.</p>
+    <div class="analogy">JPA is the <code class="inline">interface</code>, Hibernate is the <code class="inline">class</code> that implements it, and Spring Data JPA is like Lombok for DAOs — it generates the boilerplate you'd otherwise hand-write.</div>
+    <div class="diagram">
+      <svg viewBox="0 0 740 700" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Request flow from client through Spring layers to MySQL">
+        <defs>
+          <linearGradient id="ig" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#833AB4"/><stop offset="45%" stop-color="#E1306C"/>
+            <stop offset="80%" stop-color="#F77737"/><stop offset="100%" stop-color="#FCAF45"/>
+          </linearGradient>
+          <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M0,0 L10,5 L0,10 z" fill="#6E6B86"/>
+          </marker>
+        </defs>
+        <!-- flow path for animated pulse -->
+        <path id="flowPath" d="M 260 82 L 260 620" fill="none" stroke="none"/>
+        <g class="anim">
+          <circle r="5" fill="url(#ig)">
+            <animateMotion dur="6s" repeatCount="indefinite" keyPoints="0;1" keyTimes="0;1">
+              <mpath href="#flowPath"/>
+            </animateMotion>
+          </circle>
+        </g>
+        <!-- boxes -->
+        <g font-family="JetBrains Mono, monospace">
+          <!-- client -->
+          <rect x="80" y="20" width="360" height="56" rx="10" fill="#1B1B2A" stroke="#282840"/>
+          <text x="260" y="44" text-anchor="middle" fill="#ECEAF4" font-size="14" font-weight="700">📱 Instagram client</text>
+          <text x="260" y="63" text-anchor="middle" fill="#6E6B86" font-size="10.5">GET /api/feed?page=0 · POST /api/posts</text>
+          <line x1="260" y1="76" x2="260" y2="102" stroke="#6E6B86" marker-end="url(#arr)"/>
+          <text x="276" y="95" fill="#6E6B86" font-size="10">HTTP + JSON</text>
+
+          <!-- controller -->
+          <rect x="80" y="106" width="360" height="56" rx="10" fill="#15151F" stroke="#833AB4"/>
+          <text x="260" y="130" text-anchor="middle" fill="#ECEAF4" font-size="13" font-weight="700">@RestController · PostController</text>
+          <text x="260" y="149" text-anchor="middle" fill="#6E6B86" font-size="10.5">validates request DTOs, returns response DTOs</text>
+          <line x1="260" y1="162" x2="260" y2="188" stroke="#6E6B86" marker-end="url(#arr)"/>
+
+          <!-- service -->
+          <rect x="80" y="192" width="360" height="56" rx="10" fill="#15151F" stroke="#E1306C"/>
+          <text x="260" y="216" text-anchor="middle" fill="#ECEAF4" font-size="13" font-weight="700">@Service · PostService</text>
+          <text x="260" y="235" text-anchor="middle" fill="#6E6B86" font-size="10.5">business rules · @Transactional boundary starts here</text>
+          <line x1="260" y1="248" x2="260" y2="274" stroke="#6E6B86" marker-end="url(#arr)"/>
+
+          <!-- repository -->
+          <rect x="80" y="278" width="360" height="56" rx="10" fill="#15151F" stroke="#F77737"/>
+          <text x="260" y="302" text-anchor="middle" fill="#ECEAF4" font-size="13" font-weight="700">Spring Data JPA · PostRepository</text>
+          <text x="260" y="321" text-anchor="middle" fill="#6E6B86" font-size="10.5">interface only — Spring generates the proxy impl</text>
+          <line x1="260" y1="334" x2="260" y2="360" stroke="#6E6B86" marker-end="url(#arr)"/>
+          <text x="276" y="353" fill="#6E6B86" font-size="10">delegates to EntityManager</text>
+
+          <!-- jpa/hibernate -->
+          <rect x="80" y="364" width="360" height="78" rx="10" fill="#15151F" stroke="#FCAF45"/>
+          <text x="260" y="388" text-anchor="middle" fill="#ECEAF4" font-size="13" font-weight="700">JPA (spec) → Hibernate 6 (impl)</text>
+          <text x="260" y="407" text-anchor="middle" fill="#6E6B86" font-size="10.5">persistence context · dirty checking · L1 cache</text>
+          <text x="260" y="424" text-anchor="middle" fill="#6E6B86" font-size="10.5">JPQL → SQL translation · flush ordering</text>
+          <line x1="260" y1="442" x2="260" y2="468" stroke="#6E6B86" marker-end="url(#arr)"/>
+          <text x="276" y="461" fill="#6E6B86" font-size="10">SQL via PreparedStatement</text>
+
+          <!-- jdbc -->
+          <rect x="80" y="472" width="360" height="52" rx="10" fill="#1B1B2A" stroke="#282840"/>
+          <text x="260" y="494" text-anchor="middle" fill="#ECEAF4" font-size="13" font-weight="700">JDBC driver + HikariCP pool</text>
+          <text x="260" y="512" text-anchor="middle" fill="#6E6B86" font-size="10.5">borrows a pooled connection per transaction</text>
+          <line x1="260" y1="524" x2="260" y2="550" stroke="#6E6B86" marker-end="url(#arr)"/>
+
+          <!-- mysql -->
+          <rect x="80" y="554" width="360" height="66" rx="10" fill="#1B1B2A" stroke="#282840"/>
+          <text x="260" y="580" text-anchor="middle" fill="#ECEAF4" font-size="14" font-weight="700">🐬 MySQL 8 · InnoDB</text>
+          <text x="260" y="600" text-anchor="middle" fill="#6E6B86" font-size="10.5">tables · indexes · row locks · MVCC · redo/undo logs</text>
+
+          <!-- side brackets -->
+          <line x1="470" y1="110" x2="470" y2="330" stroke="#3B3B5C"/>
+          <text x="482" y="205" fill="#A5A2BA" font-size="11" font-weight="700">you write this</text>
+          <text x="482" y="222" fill="#6E6B86" font-size="10">(~3 thin layers)</text>
+          <line x1="470" y1="368" x2="470" y2="520" stroke="#3B3B5C"/>
+          <text x="482" y="435" fill="#A5A2BA" font-size="11" font-weight="700">framework runs this</text>
+          <text x="482" y="452" fill="#6E6B86" font-size="10">(where the magic +</text>
+          <text x="482" y="466" fill="#6E6B86" font-size="10">the bugs live)</text>
+        </g>
+      </svg>
+      <div class="dg-caption">One request: JSON in → DTO → entity → SQL → rows. The pulse traces the path every request takes.</div>
+    </div>
+    <div class="ig"><div class="ig-in"><span class="ig-label">📸 On Instagram</span>
+      <p>When you tap ❤️ on a post: the client calls <code class="inline">POST /api/posts/42/likes</code> → controller validates → service opens a transaction, loads the <code class="inline">Post</code>, inserts a <code class="inline">Like</code> row → Hibernate flushes an <code class="inline">INSERT</code> through a pooled JDBC connection → InnoDB writes the row and the unique index <code class="inline">(user_id, post_id)</code> rejects double-likes.</p>
+    </div></div>
+    <div class="tip">In interviews, nail this one-liner: "Spring Data JPA is not an ORM. Hibernate is the ORM; Spring Data JPA is a repository abstraction over JPA's <code class="inline">EntityManager</code>."</div>
+  </div></div></div>
+</section>
+
+<!-- ============ 02 SETUP ============ -->
+<section class="sec" id="s02">
+  <button class="sec-head" aria-expanded="false"><span class="num">02</span><h2>Project setup &amp; configuration</h2><span class="badge b-basics">Basics</span><span class="chev">▶</span></button>
+  <div class="sec-body"><div class="sec-inner"><div class="sec-content">
+    <p class="lead">Two dependencies get you everything: the JPA starter (pulls Hibernate + Spring Data + HikariCP) and the MySQL driver. Configuration lives in <code class="inline">application.yml</code>.</p>
+    <div class="codebox"><div class="codebar"><span class="fname">pom.xml</span><button class="copy">copy</button></div>
+<pre class="language-markup"><code class="language-markup">&lt;dependency&gt;
+  &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+  &lt;artifactId&gt;spring-boot-starter-data-jpa&lt;/artifactId&gt;
+&lt;/dependency&gt;
+&lt;dependency&gt;
+  &lt;groupId&gt;com.mysql&lt;/groupId&gt;
+  &lt;artifactId&gt;mysql-connector-j&lt;/artifactId&gt;
+  &lt;scope&gt;runtime&lt;/scope&gt;
+&lt;/dependency&gt;
+&lt;dependency&gt;
+  &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+  &lt;artifactId&gt;spring-boot-starter-validation&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre></div>
+    <div class="codebox"><div class="codebar"><span class="fname">application.yml</span><button class="copy">copy</button></div>
+<pre class="language-yaml"><code class="language-yaml">spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/instagram?rewriteBatchedStatements=true
+    username: insta_app
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 10        # pool size ≈ cores * 2, not 100
+  jpa:
+    hibernate:
+      ddl-auto: validate           # prod: validate/none + Flyway migrations
+    open-in-view: false            # force explicit fetching (ch. 20, 27)
+    properties:
+      hibernate:
+        format_sql: true
+
+logging:
+  level:
+    org.hibernate.SQL: debug                   # the SQL statements
+    org.hibernate.orm.jdbc.bind: trace         # the bound parameters</code></pre></div>
+    <h3>What <code class="inline">ddl-auto</code> actually does</h3>
+    <table>
+      <tr><th>Value</th><th>Behavior</th><th>Use when</th></tr>
+      <tr><td><code>none</code></td><td>Touch nothing</td><td class="ok">Production (with Flyway/Liquibase)</td></tr>
+      <tr><td><code>validate</code></td><td>Compare entities vs schema, fail fast on mismatch</td><td class="ok">Production safety net</td></tr>
+      <tr><td><code>update</code></td><td>Add missing tables/columns (never drops)</td><td class="mid">Quick local prototyping only</td></tr>
+      <tr><td><code>create</code> / <code>create-drop</code></td><td>Drop &amp; recreate schema on startup / shutdown</td><td class="no">Tests only — destroys data</td></tr>
+    </table>
+    <div class="ig"><div class="ig-in"><span class="ig-label">📸 On Instagram</span>
+      <p>You'd never let Hibernate <code class="inline">update</code> a table holding 2 billion posts — an accidental column rename becomes a "missing column" + orphaned data. Schema changes ship as versioned Flyway scripts (<code class="inline">V7__add_posts_location.sql</code>), and <code class="inline">ddl-auto: validate</code> guarantees entities and schema agree at boot.</p>
+    </div></div>
+    <div class="pit"><code class="inline">open-in-view: true</code> (the default!) keeps the DB session open through view rendering, hiding lazy-loading bugs and holding connections longer. Turn it off on day one — chapters 20 and 27 explain the failures it masks.</div>
+  </div></div></div>
+</section>
+
+<!-- ============ 03 SCHEMA ============ -->
+<section class="sec" id="s03">
+  <button class="sec-head" aria-expanded="false"><span class="num">03</span><h2>The Instagram schema — our running example</h2><span class="badge b-basics">Basics</span><span class="chev">▶</span></button>
+  <div class="sec-body"><div class="sec-inner"><div class="sec-content">
+    <p class="lead">Six tables carry the whole guide. Every chapter's snippet touches one of these, so the mapping stays in your head instead of resetting per topic.</p>
+    <div class="diagram">
+      <svg viewBox="0 0 780 500" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Entity relationship diagram of the Instagram schema">
+        <defs>
+          <linearGradient id="ig2" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="#833AB4"/><stop offset="50%" stop-color="#E1306C"/><stop offset="100%" stop-color="#F77737"/>
+          </linearGradient>
+        </defs>
+        <g font-family="JetBrains Mono, monospace" font-size="10.5">
+          <!-- relationship lines first (under boxes) -->
+          <g stroke="#4A4A6A" fill="#A5A2BA" font-size="10">
+            <line x1="215" y1="85" x2="300" y2="85"/><text x="234" y="78" stroke="none">1 : 1</text>
+            <line x1="475" y1="85" x2="560" y2="85"/><text x="486" y="78" stroke="none">N : M self</text>
+            <line x1="345" y1="150" x2="170" y2="270"/><text x="215" y="212" stroke="none">1 : N</text>
+            <line x1="390" y1="150" x2="390" y2="270"/><text x="398" y="215" stroke="none">1 : N</text>
+            <line x1="435" y1="150" x2="640" y2="270"/><text x="540" y="200" stroke="none">1 : N</text>
+            <line x1="230" y1="330" x2="310" y2="330"/><text x="248" y="322" stroke="none">1 : N</text>
+            <line x1="230" y1="360" x2="565" y2="415"/><text x="380" y="400" stroke="none">1 : N</text>
+          </g>
+          <!-- users -->
+          <rect x="300" y="30" width="175" height="120" rx="9" fill="#15151F" stroke="url(#ig2)" stroke-width="1.5"/>
+          <rect x="300" y="30" width="175" height="26" rx="9" fill="#1F1F32"/>
+          <text x="387" y="47" text-anchor="middle" fill="#ECEAF4" font-weight="700" font-size="12">users</text>
+          <text x="312" y="72" fill="#FCAF45">id  PK  BIGINT</text>
+          <text x="312" y="90" fill="#A5A2BA">username  UQ</text>
+          <text x="312" y="108" fill="#A5A2BA">email  UQ</text>
+          <text x="312" y="126" fill="#A5A2BA">status ENUM</text>
+          <text x="312" y="144" fill="#6E6B86">created_at</text>
+          <!-- profiles -->
+          <rect x="40" y="30" width="175" height="110" rx="9" fill="#15151F" stroke="#282840"/>
+          <rect x="40" y="30" width="175" height="26" rx="9" fill="#1F1F32"/>
+          <text x="127" y="47" text-anchor="middle" fill="#ECEAF4" font-weight="700" font-size="12">profiles</text>
+          <text x="52" y="72" fill="#FCAF45">user_id  PK,FK</text>
+          <text x="52" y="90" fill="#A5A2BA">bio</text>
+          <text x="52" y="108" fill="#A5A2BA">avatar_url</text>
+          <text x="52" y="126" fill="#A5A2BA">website</text>
+          <!-- followers -->
+          <rect x="560" y="30" width="185" height="110" rx="9" fill="#15151F" stroke="#282840"/>
+          <rect x="560" y="30" width="185" height="26" rx="9" fill="#1F1F32"/>
+          <text x="652" y="47" text-anchor="middle" fill="#ECEAF4" font-weight="700" font-size="12">followers</text>
+          <text x="572" y="72" fill="#FCAF45">follower_id  FK</text>
+          <text x="572" y="90" fill="#FCAF45">following_id  FK</text>
+          <text x="572" y="108" fill="#6E6B86">UQ(follower,following)</text>
+          <text x="572" y="126" fill="#6E6B86">created_at</text>
+          <!-- posts -->
+          <rect x="55" y="270" width="175" height="120" rx="9" fill="#15151F" stroke="#282840"/>
+          <rect x="55" y="270" width="175" height="26" rx="9" fill="#1F1F32"/>
+          <text x="142" y="287" text-anchor="middle" fill="#ECEAF4" font-weight="700" font-size="12">posts</text>
+          <text x="67" y="312" fill="#FCAF45">id  PK</text>
+          <text x="67" y="330" fill="#FF79A8">user_id  FK → users</text>
+          <text x="67" y="348" fill="#A5A2BA">caption</text>
+          <text x="67" y="366" fill="#A5A2BA">image_url</text>
+          <text x="67" y="384" fill="#6E6B86">created_at  IDX(user,created)</text>
+          <!-- comments -->
+          <rect x="310" y="270" width="185" height="120" rx="9" fill="#15151F" stroke="#282840"/>
+          <rect x="310" y="270" width="185" height="26" rx="9" fill="#1F1F32"/>
+          <text x="402" y="287" text-anchor="middle" fill="#ECEAF4" font-weight="700" font-size="12">comments</text>
+          <text x="322" y="312" fill="#FCAF45">id  PK</text>
+          <text x="322" y="330" fill="#FF79A8">post_id  FK → posts</text>
+          <text x="322" y="348" fill="#FF79A8">user_id  FK → users</text>
+          <text x="322" y="366" fill="#A5A2BA">body</text>
+          <text x="322" y="384" fill="#6E6B86">created_at</text>
+          <!-- likes -->
+          <rect x="565" y="360" width="180" height="110" rx="9" fill="#15151F" stroke="#282840"/>
+          <rect x="565" y="360" width="180" height="26" rx="9" fill="#1F1F32"/>
+          <text x="655" y="377" text-anchor="middle" fill="#ECEAF4" font-weight="700" font-size="12">likes</text>
+          <text x="577" y="402" fill="#FCAF45">id  PK</text>
+          <text x="577" y="420" fill="#FF79A8">user_id FK · post_id FK</text>
+          <text x="577" y="438" fill="#6E6B86">UQ(user_id, post_id)</text>
+          <text x="577" y="456" fill="#6E6B86">created_at</text>
+        </g>
+      </svg>
+      <div class="dg-caption">users is the hub · likes &amp; followers are join tables promoted to real entities (ch. 07 explains why)</div>
+    </div>
+    <div class="ig"><div class="ig-in"><span class="ig-label">📸 The cast</span>
+      <p><strong>User</strong> owns one <strong>Profile</strong> (1:1), publishes many <strong>Posts</strong> (1:N), each Post has many <strong>Comments</strong> (1:N). A user likes many posts and a post is liked by many users — <strong>Like</strong> is that N:M with a timestamp. <strong>Followers</strong> is the interesting one: an N:M from <em>users to users</em> (self-referencing).</p>
+    </div></div>
+  </div></div></div>
+</section>
+<div class="part-head">Part II — Mapping</div>
+
+<!-- ============ 04 ENTITIES ============ -->
+<section class="sec" id="s04">
+  <button class="sec-head" aria-expanded="false"><span class="num">04</span><h2>Entities &amp; core annotations</h2><span class="badge b-basics">Basics</span><span class="chev">▶</span></button>
+  <div class="sec-body"><div class="sec-inner"><div class="sec-content">
+    <p class="lead">An entity is a Java class Hibernate maps to a table: <code class="inline">@Entity</code> marks it, <code class="inline">@Id</code> marks the primary key, and everything else customizes column names, types, and constraints.</p>
+    <div class="ig"><div class="ig-in"><span class="ig-label">📸 On Instagram</span>
+      <p>The <code class="inline">User</code> entity: id, unique username/email, an account status enum, and a signup timestamp. This single class shows 90% of the annotations you'll use daily.</p>
+    </div></div>
+    <div class="codebox"><div class="codebar"><span class="fname">User.java</span><button class="copy">copy</button></div>
+<pre class="language-java"><code class="language-java">@Entity
+@Table(name = "users")                       // "user" is reserved-ish in SQL; be explicit
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)   // MySQL AUTO_INCREMENT
+    private Long id;
+
+    @Column(nullable = false, unique = true, length = 30)
+    private String username;
+
+    @Column(nullable = false, unique = true)
+    private String email;
+
+    @Enumerated(EnumType.STRING)             // stores "ACTIVE", not 0
+    @Column(nullable = false, length = 20)
+    private AccountStatus status = AccountStatus.ACTIVE;
+
+    @Lob                                     // TEXT / LONGTEXT column
+    private String pushToken;
+
+    @Transient                               // never persisted
+    private int unreadBadgeCount;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Instant createdAt = Instant.now();
+
+    protected User() {}                      // JPA needs a no-arg constructor
+    // getters/setters…
+}</code></pre></div>
+    <h3>ID generation on MySQL</h3>
+    <table>
+      <tr><th>Strategy</th><th>How</th><th>MySQL verdict</th></tr>
+      <tr><td><code>IDENTITY</code></td><td>AUTO_INCREMENT; DB assigns id on INSERT</td><td class="ok">The standard choice</td></tr>
+      <tr><td><code>SEQUENCE</code></td><td>DB sequence object</td><td class="no">MySQL has no sequences — Hibernate falls back to a table</td></tr>
+      <tr><td><code>AUTO</code></td><td>Hibernate picks</td><td class="mid">May silently create a <code>*_seq</code> table; be explicit instead</td></tr>
+      <tr><td><code>UUID</code></td><td>App-generated UUID</td><td class="mid">Fine, but random UUIDs fragment InnoDB's clustered index</td></tr>
+    </table>
+    <div class="pit"><code class="inline">EnumType.ORDINAL</code> (the default!) stores the enum's <em>position</em>. Insert <code class="inline">SUSPENDED</code> before <code class="inline">ACTIVE</code> in the enum later and every stored user silently changes status. Always <code class="inline">EnumType.STRING</code>.</div>
+    <div class="tip"><code class="inline">IDENTITY</code> has one cost: Hibernate must execute the INSERT immediately to learn the id, which disables JDBC insert batching (chapter 26). For MySQL you usually accept this trade.</div>
+  </div></div></div>
+</section>
+
+<!-- ============ 05 ONE-TO-ONE ============ -->
+<section class="sec" id="s05">
+  <button class="sec-head" aria-expanded="false"><span class="num">05</span><h2>One-to-One — User ↔ Profile</h2><span class="badge b-core">Core</span><span class="chev">▶</span></button>
+  <div class="sec-body"><div class="sec-inner"><div class="sec-content">
+    <p class="lead">Each user has exactly one profile. The cleanest mapping is <strong>shared primary key</strong> with <code class="inline">@MapsId</code>: the profile's PK <em>is</em> the user's PK — one column doing PK + FK duty, no extra index.</p>
+    <div class="ig"><div class="ig-in"><span class="ig-label">📸 On Instagram</span>
+      <p>Why split at all? <code class="inline">users</code> is read on every request (auth, mentions, likes); bio/avatar/website only matter on the profile screen. Splitting keeps the hot table narrow.</p>
+    </div></div>
+    <div class="codebox"><div class="codebar"><span class="fname">Profile.java — shared-PK mapping</span><button class="copy">copy</button></div>
+<pre class="language-java"><code class="language-java">@Entity
+@Table(name = "profiles")
+public class Profile {
+
+    @Id
+    private Long id;                          // same value as user.id
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @MapsId                                   // reuse the User's id as my PK
+    @JoinColumn(name = "user_id")
+    private User user;
+
+    private String bio;
+    private String avatarUrl;
+    private String website;
+}
+
+// creating both together
+User u = new User("purusottam", "p@x.dev");
+Profile p = new Profile();
+p.setUser(u);                                 // id copied from user at persist
+userRepository.save(u);
+profileRepository.save(p);</code></pre></div>
+    <p>The alternative — a plain FK column with <code class="inline">@JoinColumn(name = "user_id", unique = true)</code> on Profile — also works; you then add <code class="inline">@OneToOne(mappedBy = "user")</code> on User only if you truly need <code class="inline">user.getProfile()</code>.</p>
+    <div class="pit">The <code class="inline">mappedBy</code> (parent) side of a one-to-one <strong>cannot be truly LAZY</strong>. Hibernate must query the child table anyway to decide between proxy and <code class="inline">null</code>. If you see a surprise <code class="inline">SELECT … FROM profiles</code> on every user load, this is why. Fix: query from the owning side, or use a dedicated repository call / projection.</div>
+  </div></div></div>
+</section>
+
+<!-- ============ 06 MANYTOONE ============ -->
+<section class="sec" id="s06">
+  <button class="sec-head" aria-expanded="false"><span class="num">06</span><h2>Many-to-One / One-to-Many — Posts &amp; Comments</h2><span class="badge b-core">Core</span><span class="chev">▶</span></button>
+  <div class="sec-body"><div class="sec-inner"><div class="sec-content">
+    <p class="lead">The workhorse relationship. The <strong>many</strong> side (<code class="inline">Post.user</code>) owns the FK column and is what you should always map. The <strong>one</strong> side (<code class="inline">User.posts</code>) is optional sugar — add it only when navigating that direction genuinely helps.</p>
+    <div class="codebox"><div class="codebar"><span class="fname">Post.java + Comment.java</span><button class="copy">copy</button></div>
+<pre class="language-java"><code class="language-java">@Entity @Table(name = "posts")
+public class Post {
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)   // owning side → FK user_id
+    @JoinColumn(name = "user_id")
+    private User user;
+
+    private String caption;
+    private String imageUrl;
+    private Instant createdAt = Instant.now();
+
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL,
+               orphanRemoval = true)                        // inverse side
+    private List&lt;Comment&gt; comments = new ArrayList&lt;&gt;();
+
+    public void addComment(Comment c) {      // keep both sides in sync
+        comments.add(c);
+        c.setPost(this);
+    }
+}
+
+@Entity @Table(name = "comments")
+public class Comment {
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "post_id")
+    private Post post;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_id")
+    private User author;
+
+    private String body;
+}</code></pre></div>
+    <div class="ig"><div class="ig-in"><span class="ig-label">📸 On Instagram</span>
+      <p>Post → Comments is bidirectional because a post screen always shows its comments. But <code class="inline">User.posts</code>? A celebrity has 10,000 posts — you'd never call <code class="inline">user.getPosts()</code> and load them all. Instead you query: <code class="inline">postRepository.findByUserId(id, pageable)</code>. <strong>Unbounded collections should be queries, not fields.</strong></p>
+    </div></div>
+    <div class="pit">A <code class="inline">@OneToMany</code> without <code class="inline">mappedBy</code> creates a hidden <em>join table</em> (or forces extra UPDATEs). If you map both directions, <code class="inline">mappedBy</code> on the collection side is mandatory — it tells Hibernate "the FK lives over there."</div>
+    <div class="tip">Always add the sync helper (<code class="inline">addComment</code>). Setting only one side is the #1 cause of "why is my FK null" bugs in bidirectional mappings.</div>
+  </div></div></div>
+</section>
+
+<!-- ============ 07 MANYTOMANY ============ -->
+<section class="sec" id="s07">
+  <button class="sec-head" aria-expanded="false"><span class="num">07</span><h2>Many-to-Many — Followers &amp; Likes</h2><span class="badge b-core">Core</span><span class="chev">▶</span></button>
+  <div class="sec-body"><div class="sec-inner"><div class="sec-content">
+    <p class="lead">Two flavors here. <strong>Followers</strong>: a self-referencing <code class="inline">@ManyToMany</code> from User to User. <strong>Likes</strong>: starts as N:M, but the moment you need <code class="inline">created_at</code> on the relationship, you must promote the join table to a real entity.</p>
+    <div class="codebox"><div class="codebar"><span class="fname">User.java — self-referencing followers</span><button class="copy">copy</button></div>
+<pre class="language-java"><code class="language-java">@ManyToMany
+@JoinTable(name = "followers",
+    joinColumns        = @JoinColumn(name = "follower_id"),   // me
+    inverseJoinColumns = @JoinColumn(name = "following_id"))  // who I follow
+private Set&lt;User&gt; following = new HashSet&lt;&gt;();
+
+@ManyToMany(mappedBy = "following")
+private Set&lt;User&gt; followers = new HashSet&lt;&gt;();</code></pre></div>
+    <div class="ig"><div class="ig-in"><span class="ig-label">📸 Why Like is an entity, not @ManyToMany</span>
+      <p>Instagram shows "liked 2h ago" and orders like-notifications by time. A raw <code class="inline">@ManyToMany</code> join table can hold only the two FKs — no timestamp, no id, no extra state. Rule of thumb: <strong>the moment the relationship itself has data, it becomes an entity.</strong></p>
+    </div></div>
+    <div class="codebox"><div class="codebar"><span class="fname">Like.java — join table promoted to entity</span><button class="copy">copy</button></div>
+<pre class="language-java"><code class="language-java">@Entity
+@Table(name = "likes",
+       uniqueConstraints = @UniqueConstraint(
+           name = "uq_like_user_post",
+           columnNames = {"user_id", "post_id"}))     // one like per user per post
+public class Like {
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_id")
+    private User user;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "post_id")
+    private Post post;
+
+    private Instant createdAt = Instant.now();
+}</code></pre></div>
+    <div class="pit">Never map likes as <code class="inline">Post.likedBy : Set&lt;User&gt;</code> in a real system — a viral post has 5M likes and one <code class="inline">getLikedBy()</code> call OOMs the JVM. Count with <code class="inline">likeRepository.countByPostId(id)</code>, check with <code class="inline">existsByUserIdAndPostId(…)</code>.</div>
+    <div class="tip">For celebrity-scale followers, the same logic applies: keep the <code class="inline">@ManyToMany</code> for small curated sets (e.g., "close friends", capped at 100s) and use a <code class="inline">Follow</code> entity + paged queries for the open-ended graph.</div>
+  </div></div></div>
+</section>
+<div class="part-head">Part III — Repositories &amp; Queries</div>
+
+<!-- ============ 08 REPOSITORIES ============ -->
+<section class="sec" id="s08">
+  <button class="sec-head" aria-expanded="false"><span class="num">08</span><h2>Repositories &amp; CRUD operations</h2><span class="badge b-basics">Basics</span><span class="chev">▶</span></button>
+  <div class="sec-body"><div class="sec-inner"><div class="sec-content">
+    <p class="lead">Declare an interface, extend <code class="inline">JpaRepository&lt;Entity, IdType&gt;</code>, done — Spring generates a proxy with ~20 CRUD methods at startup. You never write an implementation class.</p>
+    <p>The hierarchy: <code class="inline">Repository</code> (marker) → <code class="inline">CrudRepository</code> (save, findById, delete) → <code class="inline">PagingAndSortingRepository</code> (+ paging) → <code class="inline">JpaRepository</code> (+ flush, saveAll, batch deletes, JPA-specific extras).</p>
+    <div class="codebox"><div class="codebar"><span class="fname">PostRepository.java + service usage</span><button class="copy">copy</button></div>
+<pre class="language-java"><code class="language-java">public interface PostRepository extends JpaRepository&lt;Post, Long&gt; { }
+
+@Service
+@RequiredArgsConstructor
+public class PostService {
+    private final PostRepository posts;
+
+    @Transactional
+    public Post publish(Long userId, String caption, String imageUrl) {
+        User author = userRepository.getReferenceById(userId); // proxy, no SELECT
+        return posts.save(new Post(author, caption, imageUrl)); // INSERT
+    }
+
+    @Transactional(readOnly = true)
+    public Post get(Long id) {
+        return posts.findById(id)                               // Optional&lt;Post&gt;
+                    .orElseThrow(() -&gt; new PostNotFoundException(id));
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        posts.deleteById(id);                                   // SELECT + DELETE
+    }
+}</code></pre></div>
+    <div class="ig"><div class="ig-in"><span class="ig-label">📸 On Instagram</span>
+      <p>Publishing a post needs the author only as an FK value. <code class="inline">getReferenceById</code> returns a lazy proxy holding just the id — no <code class="inline">SELECT … FROM users</code>. <code class="inline">findById</code> would work too, but at feed-write volume that's millions of pointless reads/day.</p>
+    </div></div>
+    <div class="tip"><code class="inline">save()</code> is really <em>persist-or-merge</em>: if the id is null it INSERTs; otherwise it merges (may SELECT first). And inside a transaction you often don't need <code class="inline">save()</code> at all for updates — dirty checking (ch. 19) writes changes automatically.</div>
+  </div></div></div>
+</section>
+
+<!-- ============ 09 DERIVED ============ -->
+<section class="sec" id="s09">
+  <button class="sec-head" aria-expanded="false"><span class="num">09</span><h2>Derived query methods</h2><span class="badge b-basics">Basics</span><span class="chev">▶</span></button>
+  <div class="sec-body"><div class="sec-inner"><div class="sec-content">
+    <p class="lead">Spring parses the <em>method name</em> and generates the query. <code class="inline">findByUsername</code> becomes <code class="inline">WHERE username = ?</code> — zero SQL written, checked at startup (typos fail fast at boot, not in prod).</p>
+    <div class="codebox"><div class="codebar"><span class="fname">Real repository methods from our app</span><button class="copy">copy</button></div>
+<pre class="language-java"><code class="language-java">public interface UserRepository extends JpaRepository&lt;User, Long&gt; {
+    Optional&lt;User&gt; findByUsername(String username);
+    Optional&lt;User&gt; findByUsernameIgnoreCase(String username);
+    boolean existsByEmail(String email);                       // signup check
+    List&lt;User&gt; findByUsernameStartingWith(String prefix);      // @mention autocomplete
+}
+
+public interface PostRepository extends JpaRepository&lt;Post, Long&gt; {
+    List&lt;Post&gt; findTop9ByUserIdOrderByCreatedAtDesc(Long userId);   // profile grid
+    List&lt;Post&gt; findByCaptionContainingIgnoreCase(String q);         // naive search
+    List&lt;Post&gt; findByUserIdInAndCreatedAtAfter(List&lt;Long&gt; ids, Instant since);
+    long countByUserId(Long userId);                                // "142 posts"
+}
+
+public interface LikeRepository extends JpaRepository&lt;Like, Long&gt; {
+    boolean existsByUserIdAndPostId(Long userId, Long postId);  // is ❤️ filled?
+    long countByPostId(Long postId);                            // like counter
+    void deleteByUserIdAndPostId(Long userId, Long postId);     // unlike
+}</code></pre></div>
+    <h3>Keyword cheat-sheet</h3>
+    <table>
+      <tr><th>Keyword</th><th>SQL</th><th>Example</th></tr>
+      <tr><td><code>And / Or</code></td><td>AND / OR</td><td><code>findByUserIdAndCreatedAtAfter</code></td></tr>
+      <tr><td><code>Containing</code></td><td>LIKE %x%</td><td><code>findByCaptionContaining</code></td></tr>
+      <tr><td><code>StartingWith</code></td><td>LIKE x%</td><td>username autocomplete (index-friendly!)</td></tr>
+      <tr><td><code>In</code></td><td>IN (…)</td><td><code>findByUserIdIn(followedIds)</code></td></tr>
+      <tr><td><code>Between / After / Before</code></td><td>range compare</td><td>posts from last 24h</td></tr>
+      <tr><td><code>Top N / First N</code></td><td>LIMIT N</td><td><code>findTop9By…</code></td></tr>
+      <tr><td><code>exists… / count…</code> prefix</td><td>EXISTS / COUNT</td><td>cheap checks, no entity hydration</td></tr>
+      <tr><td><code>OrderBy…Desc</code></td><td>ORDER BY</td><td>newest-first everywhere</td></tr>
+    </table>
+    <div class="pit">Method names are a DSL, not documentation. <code class="inline">findByUserIdInAndCreatedAtAfterAndCaptionContainingOrderByCreatedAtDesc</code> is a signal to switch to <code class="inline">@Query</code> (ch. 10) or Specifications (ch. 13).</div>
+  </div></div></div>
+</section>
+
+<!-- ============ 10 JPQL ============ -->
+<section class="sec" id="s10">
+  <button class="sec-head" aria-expanded="false"><span class="num">10</span><h2>JPQL with @Query</h2><span class="badge b-core">Core</span><span class="chev">▶</span></button>
+  <div class="sec-body"><div class="sec-inner"><div class="sec-content">
+    <p class="lead">JPQL looks like SQL but targets <strong>entities and their fields</strong>, not tables and columns. Hibernate translates it to MySQL dialect. You join through <em>relationships</em> (<code class="inline">p.user</code>), never through FK columns.</p>
+    <div class="ig"><div class="ig-in"><span class="ig-label">📸 The home feed query</span>
+      <p>"Show me recent posts from everyone I follow" — the single most important query in the app. It joins through the follow relationship in one statement.</p>
+    </div></div>
+    <div class="codebox"><div class="codebar"><span class="fname">PostRepository.java</span><button class="copy">copy</button></div>
+<pre class="language-java"><code class="language-java">public interface PostRepository extends JpaRepository&lt;Post, Long&gt; {
+
+    // feed: posts authored by users that :viewer follows
+    @Query("""
+        SELECT p FROM Post p
+        WHERE p.user IN (SELECT f.following FROM Follow f
+                         WHERE f.follower.id = :viewerId)
+        ORDER BY p.createdAt DESC
+        """)
+    Slice&lt;Post&gt; findFeed(@Param("viewerId") Long viewerId, Pageable pageable);
+
+    // bulk write: JPQL UPDATE bypasses entities entirely
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE Post p SET p.archived = true WHERE p.user.id = :userId")
+    int archiveAllByUser(@Param("userId") Long userId);
+}</code></pre></div>
+    <ul>
+      <li><strong>Named params</strong> (<code class="inline">:viewerId</code>) over positional <code class="inline">?1</code> — refactor-safe.</li>
+      <li><strong><code class="inline">@Modifying</code></strong> is required for UPDATE/DELETE. These skip the persistence context, so <code class="inline">clearAutomatically = true</code> evicts now-stale managed entities.</li>
+      <li>JPQL is portable across databases; it can't use MySQL-only features — that's chapter 11's job.</li>
+    </ul>
+    <div class="pit">Bulk <code class="inline">@Modifying</code> queries do <em>not</em> fire entity lifecycle events, <code class="inline">@Version</code> checks, or cascades. If an already-loaded <code class="inline">Post</code> sits in the persistence context, it still shows <code class="inline">archived = false</code> after the bulk update — hence the clear.</div>
+  </div></div></div>
+</section>
+
+<!-- ============ 11 NATIVE ============ -->
+<section class="sec" id="s11">
+  <button class="sec-head" aria-expanded="false"><span class="num">11</span><h2>Native SQL queries</h2><span class="badge b-core">Core</span><span class="chev">▶</span></button>
+  <div class="sec-body"><div class="sec-inner"><div class="sec-content">
+    <p class="lead">Same <code class="inline">@Query</code>, add <code class="inline">nativeQuery = true</code>, and you're writing raw MySQL against real tables. Reach for it when you need something JPQL can't express: window functions, index hints, <code class="inline">ON DUPLICATE KEY</code>, JSON functions.</p>
+    <div class="ig"><div class="ig-in"><span class="ig-label">📸 Trending: top 3 posts per user this week</span>
+      <p>"Top-N per group" needs <code class="inline">ROW_NUMBER() OVER (PARTITION BY …)</code> — a window function JPQL doesn't have. Classic native-query territory.</p>
+    </div></div>
+    <div class="codebox"><div class="codebar"><span class="fname">PostRepository.java</span><button class="copy">copy</button></div>
+<pre class="language-java"><code class="language-java">@Query(value = """
+    SELECT * FROM (
+        SELECT p.*,
+               ROW_NUMBER() OVER (PARTITION BY p.user_id
+                                  ORDER BY p.like_count DESC) AS rn
+        FROM posts p
+        WHERE p.created_at &gt;= NOW() - INTERVAL 7 DAY
+    ) ranked
+    WHERE ranked.rn &lt;= 3
+    """,
+    nativeQuery = true)
+List&lt;Post&gt; findWeeklyTop3PerUser();
+
+// pagination with native SQL needs an explicit count query
+@Query(value = "SELECT * FROM posts WHERE user_id = :uid ORDER BY created_at DESC",
+       countQuery = "SELECT count(*) FROM posts WHERE user_id = :uid",
+       nativeQuery = true)
+Page&lt;Post&gt; pageByUser(@Param("uid") Long userId, Pageable pageable);</code></pre></div>
+    <div class="pit">Native queries trade away portability, startup validation, and automatic <code class="inline">Sort</code> mapping (property names ≠ column names). Keep them rare, name them clearly, and cover each with a test — a typo here surfaces at runtime, not boot.</div>
+    <div class="tip">Returning entities from native SQL works if the SELECT provides all mapped columns. For partial columns, return an interface projection (ch. 24) instead of wrestling with <code class="inline">@SqlResultSetMapping</code>.</div>
+  </div></div></div>
+</section>
+
+<!-- ============ 12 CRITERIA ============ -->
+<section class="sec" id="s12">
+  <button class="sec-head" aria-expanded="false"><span class="num">12</span><h2>Criteria API</h2><span class="badge b-adv">Advanced</span><span class="chev">▶</span></button>
+  <div class="sec-body"><div class="sec-inner"><div class="sec-content">
+    <p class="lead">Queries built as Java objects instead of strings — for when the query's <em>shape</em> isn't known until runtime. Powerful, verbose, and mostly hidden behind Specifications (ch. 13) in modern code. Know it because interviewers ask, and because Specifications compile down to it.</p>
+    <div class="ig"><div class="ig-in"><span class="ig-label">📸 Advanced post search</span>
+      <p>The Explore filter screen: caption text is optional, author is optional, date range is optional. String-concatenating JPQL for 2³ combinations is a bug factory; Criteria builds exactly the WHERE clause the request needs.</p>
+    </div></div>
+    <div class="codebox"><div class="codebar"><span class="fname">PostSearchDao.java</span><button class="copy">copy</button></div>
+<pre class="language-java"><code class="language-java">public List&lt;Post&gt; search(String caption, Long userId, Instant since) {
+    CriteriaBuilder cb = em.getCriteriaBuilder();
+    CriteriaQuery&lt;Post&gt; cq = cb.createQuery(Post.class);
+    Root&lt;Post&gt; post = cq.from(Post.class);
+
+    List&lt;Predicate&gt; where = new ArrayList&lt;&gt;();
+    if (caption != null)
+        where.add(cb.like(cb.lower(post.get("caption")),
+                          "%" + caption.toLowerCase() + "%"));
+    if (userId != null)
+        where.add(cb.equal(post.get("user").get("id"), userId));
+    if (since != null)
+        where.add(cb.greaterThanOrEqualTo(post.get("createdAt"), since));
+
+    cq.select(post)
+      .where(where.toArray(new Predicate[0]))
+      .orderBy(cb.desc(post.get("createdAt")));
+
+    return em.createQuery(cq).setMaxResults(50).getResultList();
+}</code></pre></div>
+    <div class="pit">String paths like <code class="inline">post.get("caption")</code> aren't compile-checked — rename the field and this breaks at runtime. The JPA static metamodel (<code class="inline">Post_.caption</code>, generated at build time) fixes that, at the cost of an annotation-processor setup.</div>
+  </div></div></div>
+</section>
+
+<!-- ============ 13 SPECIFICATIONS ============ -->
+<section class="sec" id="s13">
+  <button class="sec-head" aria-expanded="false"><span class="num">13</span><h2>Specifications — composable dynamic filters</h2><span class="badge b-adv">Advanced</span><span class="chev">▶</span></button>
+  <div class="sec-body"><div class="sec-inner"><div class="sec-content">
+    <p class="lead">Spring Data's ergonomic wrapper over Criteria: each filter becomes a small, named, reusable <code class="inline">Specification</code>, and you chain them with <code class="inline">.and()</code> / <code class="inline">.or()</code> like Lego bricks.</p>
+    <div class="codebox"><div class="codebar"><span class="fname">PostSpecs.java + usage</span><button class="copy">copy</button></div>
+<pre class="language-java"><code class="language-java">public interface PostRepository
+        extends JpaRepository&lt;Post, Long&gt;, JpaSpecificationExecutor&lt;Post&gt; { }
+
+public final class PostSpecs {
+    public static Specification&lt;Post&gt; captionContains(String q) {
+        return (root, cq, cb) -&gt;
+            cb.like(cb.lower(root.get("caption")), "%" + q.toLowerCase() + "%");
+    }
+    public static Specification&lt;Post&gt; byAuthor(Long userId) {
+        return (root, cq, cb) -&gt; cb.equal(root.get("user").get("id"), userId);
+    }
+    public static Specification&lt;Post&gt; postedAfter(Instant t) {
+        return (root, cq, cb) -&gt; cb.greaterThanOrEqualTo(root.get("createdAt"), t);
+    }
+}
+
+// service — assemble only the filters the request actually sent
+Specification&lt;Post&gt; spec = Specification.allOf(
+    q      != null ? PostSpecs.captionContains(q)  : null,
+    userId != null ? PostSpecs.byAuthor(userId)    : null,
+    since  != null ? PostSpecs.postedAfter(since)  : null);
+
+Page&lt;Post&gt; result = postRepository.findAll(spec, pageable);   // paging for free</code></pre></div>
+    <div class="ig"><div class="ig-in"><span class="ig-label">📸 On Instagram</span>
+      <p>Same Explore search as chapter 12, but each rule now has a name, a home, and a unit test — and moderation tooling reuses <code class="inline">byAuthor()</code> without copy-pasting predicates.</p>
+    </div></div>
+    <div class="tip">Specifications + <code class="inline">findAll(spec, pageable)</code> is the cleanest answer to "build me a search endpoint with N optional filters" — a very common interview design question.</div>
+  </div></div></div>
+</section>
+
+<!-- ============ 14 PAGINATION ============ -->
+<section class="sec" id="s14">
+  <button class="sec-head" aria-expanded="false"><span class="num">14</span><h2>Pagination &amp; sorting</h2><span class="badge b-core">Core</span><span class="chev">▶</span></button>
+  <div class="sec-body"><div class="sec-inner"><div class="sec-content">
+    <p class="lead">Pass a <code class="inline">Pageable</code> into any repository method and Spring adds <code class="inline">LIMIT/OFFSET</code> + <code class="inline">ORDER BY</code>. The key decision is the return type: <code class="inline">Page</code> runs an extra COUNT query; <code class="inline">Slice</code> just checks "is there one more?"</p>
+    <div class="ig"><div class="ig-in"><span class="ig-label">📸 Infinite scroll = Slice, not Page</span>
+      <p>The feed never shows "page 3 of 41,209" — it only needs <em>hasNext</em>. Skipping <code class="inline">COUNT(*)</code> over a hundred-million-row posts table on every scroll is a real win. Use <code class="inline">Page</code> where you render numbered pagination (admin dashboards).</p>
+    </div></div>
+    <div class="codebox"><div class="codebar"><span class="fname">Controller + repository</span><button class="copy">copy</button></div>
+<pre class="language-java"><code class="language-java">// GET /api/users/7/posts?page=0&amp;size=12&amp;sort=createdAt,desc
+@GetMapping("/api/users/{id}/posts")
+public Slice&lt;PostCard&gt; grid(@PathVariable Long id,
+                            @PageableDefault(size = 12, sort = "createdAt",
+                                             direction = Sort.Direction.DESC)
+                            Pageable pageable) {
+    return postRepository.findByUserId(id, pageable);
+}
+
+// repository
+Slice&lt;PostCard&gt; findByUserId(Long userId, Pageable pageable);
+
+// building one manually
+Pageable p = PageRequest.of(0, 12,
+        Sort.by("createdAt").descending().and(Sort.by("id").descending()));</code></pre></div>
+    <div class="pit">Deep OFFSET is a scan: <code class="inline">LIMIT 12 OFFSET 120000</code> reads and throws away 120k rows. For endless feeds, switch to <strong>keyset (seek) pagination</strong>: <code class="inline">WHERE created_at &lt; :lastSeen ORDER BY created_at DESC LIMIT 12</code> — constant-time regardless of depth, and it rides the <code class="inline">(user_id, created_at)</code> index from chapter 23.</div>
+    <div class="tip">Always add a unique tiebreaker (<code class="inline">id</code>) to your sort. Two posts created in the same millisecond can otherwise swap between pages, and users see duplicates while scrolling.</div>
+  </div></div></div>
+</section>
+<div class="part-head">Part IV — Transactions &amp; the Persistence Context</div>
+
+<!-- ============ 15 TRANSACTIONS ============ -->
+<section class="sec" id="s15">
+  <button class="sec-head" aria-expanded="false"><span class="num">15</span><h2>Transactions &amp; rollback rules</h2><span class="badge b-core">Core</span><span class="chev">▶</span></button>
+  <div class="sec-body"><div class="sec-inner"><div class="sec-content">
+    <p class="lead"><code class="inline">@Transactional</code> wraps a method in begin → commit/rollback via an AOP proxy. Put it on <strong>service methods</strong> — that's your unit-of-work boundary. Default rollback rule: unchecked exceptions roll back, <strong>checked exceptions do not</strong>.</p>
+    <div class="ig"><div class="ig-in"><span class="ig-label">📸 Publishing a post is two writes or none</span>
+      <p>Insert the post <em>and</em> bump <code class="inline">profile.postCount</code>. If the counter update fails, the post insert must vanish too — otherwise profile says "141 posts" while the grid shows 142.</p>
+    </div></div>
+    <div class="codebox"><div class="codebar"><span class="fname">PostService.java</span><button class="copy">copy</button></div>
+<pre class="language-java"><code class="language-java">@Service
+public class PostService {
+
+    @Transactional                                  // one atomic unit
+    public Post publish(Long userId, CreatePostRequest req) {
+        User author = users.getReferenceById(userId);
+        Post post = posts.save(new Post(author, req.caption(), req.imageUrl()));
+
+        Profile profile = profiles.findById(userId).orElseThrow();
+        profile.incrementPostCount();               // dirty checking → UPDATE
+        return post;                                // commit flushes both writes
+    }
+
+    @Transactional(readOnly = true)                 // hint: no flush, driver optimizations
+    public PostDetail getDetail(Long postId) { … }
+
+    @Transactional(rollbackFor = ReceiptException.class)   // checked → opt-in
+    public void purchasePromotion(Long postId) throws ReceiptException { … }
+}</code></pre></div>
+    <ul>
+      <li><strong>Rollback:</strong> <code class="inline">RuntimeException</code>/<code class="inline">Error</code> → automatic. Checked exceptions → commit anyway unless <code class="inline">rollbackFor</code> says otherwise. This surprises everyone once.</li>
+      <li><strong><code class="inline">readOnly = true</code></strong>: skips dirty-check snapshots and flush — measurable on hot read paths like the feed.</li>
+      <li><strong>Where it fails silently:</strong> <code class="inline">@Transactional</code> on <code class="inline">private</code> methods, or <code class="inline">this.otherMethod()</code> self-invocation — the proxy is bypassed, no transaction starts.</li>
+    </ul>
+    <div class="pit">Catching an exception <em>inside</em> the transactional method and swallowing it doesn't undo the rollback mark. If a <code class="inline">RuntimeException</code> already crossed a transactional boundary, commit throws <code class="inline">UnexpectedRollbackException</code>. Handle by letting it propagate, or catch <em>outside</em> the boundary.</div>
+  </div></div></div>
+</section>
+
+<!-- ============ 16 PROPAGATION ============ -->
+<section class="sec" id="s16">
+  <button class="sec-head" aria-expanded="false"><span class="num">16</span><h2>Propagation — transactions calling transactions</h2><span class="badge b-adv">Advanced</span><span class="chev">▶</span></button>
+  <div class="sec-body"><div class="sec-inner"><div class="sec-content">
+    <p class="lead">Propagation answers one question: when a transactional method calls another, does the inner one <strong>join</strong> the existing transaction, <strong>suspend it and start its own</strong>, or something else?</p>
+    <table>
+      <tr><th>Propagation</th><th>Existing tx?</th><th>No tx?</th><th>Instagram use</th></tr>
+      <tr><td><code>REQUIRED</code> (default)</td><td>join it</td><td>start new</td><td>Almost everything</td></tr>
+      <tr><td><code>REQUIRES_NEW</code></td><td>suspend, start new</td><td>start new</td><td>Audit log that must survive rollback</td></tr>
+      <tr><td><code>SUPPORTS</code></td><td>join it</td><td>run non-tx</td><td>Flexible read helpers</td></tr>
+      <tr><td><code>MANDATORY</code></td><td>join it</td><td class="no">throw</td><td>"Never call me outside a tx" guards</td></tr>
+      <tr><td><code>NOT_SUPPORTED</code></td><td>suspend, run non-tx</td><td>run non-tx</td><td>Slow external call mid-flow</td></tr>
+      <tr><td><code>NEVER</code></td><td class="no">throw</td><td>run non-tx</td><td>Enforce tx-free code</td></tr>
+      <tr><td><code>NESTED</code></td><td>savepoint inside</td><td>start new</td><td>Partial rollback of a sub-step</td></tr>
+    </table>
+    <div class="ig"><div class="ig-in"><span class="ig-label">📸 Moderation audit must outlive the rollback</span>
+      <p>When auto-moderation rejects a post, the publish transaction rolls back — but compliance requires the "content rejected" audit row to <em>persist</em>. <code class="inline">REQUIRES_NEW</code> gives the audit write its own committed transaction.</p>
+    </div></div>
+    <div class="codebox"><div class="codebar"><span class="fname">AuditService.java</span><button class="copy">copy</button></div>
+<pre class="language-java"><code class="language-java">@Service
+public class AuditService {
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void record(String event, Long userId) {
+        auditRepository.save(new AuditEntry(event, userId, Instant.now()));
+    }   // commits HERE, independent of the caller's fate
+}
+
+@Service
+public class PostService {
+    @Transactional
+    public Post publish(Long userId, CreatePostRequest req) {
+        Post post = posts.save(new Post(…));
+        if (moderation.isBlocked(post)) {
+            audit.record("POST_REJECTED", userId);   // separate tx, separate connection
+            throw new ContentPolicyException();       // outer tx rolls back; audit stays
+        }
+        return post;
+    }
+}</code></pre></div>
+    <div class="pit">Two gotchas: (1) <code class="inline">REQUIRES_NEW</code> borrows a <em>second</em> connection while the first is suspended — under load this can deadlock an undersized pool. (2) Self-invocation strikes again: calling <code class="inline">this.record(…)</code> from the same class ignores the annotation. It must cross a bean proxy.</div>
+  </div></div></div>
+</section>
+
+<!-- ============ 17 ISOLATION ============ -->
+<section class="sec" id="s17">
+  <button class="sec-head" aria-expanded="false"><span class="num">17</span><h2>Isolation levels</h2><span class="badge b-adv">Advanced</span><span class="chev">▶</span></button>
+  <div class="sec-body"><div class="sec-inner"><div class="sec-content">
+    <p class="lead">Isolation decides what one running transaction can see of others. Stronger isolation = fewer anomalies = less concurrency. <strong>MySQL/InnoDB defaults to REPEATABLE_READ</strong>; most other RDBMSs default to READ_COMMITTED.</p>
+    <table>
+      <tr><th>Level</th><th>Dirty read</th><th>Non-repeatable read</th><th>Phantom read</th></tr>
+      <tr><td><code>READ_UNCOMMITTED</code></td><td class="no">possible</td><td class="no">possible</td><td class="no">possible</td></tr>
+      <tr><td><code>READ_COMMITTED</code></td><td class="ok">prevented</td><td class="no">possible</td><td class="no">possible</td></tr>
+      <tr><td><code>REPEATABLE_READ</code> <span style="color:var(--faint)">(MySQL default)</span></td><td class="ok">prevented</td><td class="ok">prevented</td><td class="mid">mostly prevented*</td></tr>
+      <tr><td><code>SERIALIZABLE</code></td><td class="ok">prevented</td><td class="ok">prevented</td><td class="ok">prevented</td></tr>
+    </table>
+    <p style="font-size:12.5px;color:var(--faint)">* InnoDB's MVCC snapshots + gap locks block most phantoms at REPEATABLE_READ — a favorite interview nuance.</p>
+    <div class="ig"><div class="ig-in"><span class="ig-label">📸 Anomalies in Instagram terms</span>
+      <p><strong>Dirty read:</strong> analytics counts a like from a transaction that then rolls back — a like that never existed. <strong>Non-repeatable read:</strong> a report reads <code class="inline">follower_count</code> twice in one tx and gets 999 then 1000. <strong>Phantom:</strong> "posts in the last hour" returns 5 rows, re-run in the same tx returns 6.</p>
+    </div></div>
+    <div class="codebox"><div class="codebar"><span class="fname">Setting it per method</span><button class="copy">copy</button></div>
+<pre class="language-java"><code class="language-java">// consistent multi-read snapshot for a payout/analytics job
+@Transactional(isolation = Isolation.REPEATABLE_READ, readOnly = true)
+public CreatorStats computeMonthlyStats(Long userId) {
+    long posts    = postRepository.countByUserId(userId);
+    long likes    = likeRepository.countByPostUserId(userId);
+    long follows  = followRepository.countByFollowingId(userId);
+    return new CreatorStats(posts, likes, follows);   // one consistent snapshot
+}</code></pre></div>
+    <div class="tip">Don't reach for <code class="inline">SERIALIZABLE</code> to fix a lost-update on like counters — that's a locking problem (ch. 22) or an atomic-update problem (<code class="inline">UPDATE … SET like_count = like_count + 1</code>), not an isolation problem.</div>
+  </div></div></div>
+</section>
+
+<!-- ============ 18 LIFECYCLE ============ -->
+<section class="sec" id="s18">
+  <button class="sec-head" aria-expanded="false"><span class="num">18</span><h2>Entity lifecycle &amp; the persistence context</h2><span class="badge b-adv">Advanced</span><span class="chev">▶</span></button>
+  <div class="sec-body"><div class="sec-inner"><div class="sec-content">
+    <p class="lead">The persistence context is Hibernate's per-transaction working memory: a map of <em>id → managed entity</em>. Every entity is in exactly one of four states, and knowing which explains 80% of "why didn't my change save?" mysteries.</p>
+    <div class="analogy">The persistence context is a git staging area. <code class="inline">new Post()</code> is an untracked file (transient). <code class="inline">persist/find</code> = <code class="inline">git add</code> (managed, being watched). Flush/commit = the actual commit. Detached = you copied the file out of the repo — edits there change nothing.</div>
+    <div class="states">
+      <div class="state"><b style="color:#B18CFF">Transient</b><span><code class="inline">new Post()</code> — no id, unknown to Hibernate and the DB.</span></div>
+      <div class="state"><b style="color:#3DDC97">Managed</b><span>After <code class="inline">persist()</code> / <code class="inline">find()</code> / query — tracked; changes auto-flush.</span></div>
+      <div class="state"><b style="color:#FCAF45">Detached</b><span>Context closed or <code class="inline">detach()</code> — has an id, no longer tracked.</span></div>
+      <div class="state"><b style="color:#FF6B81">Removed</b><span><code class="inline">remove()</code> — scheduled for DELETE at flush.</span></div>
+    </div>
+    <div class="codebox"><div class="codebar"><span class="fname">States in motion</span><button class="copy">copy</button></div>
+<pre class="language-java"><code class="language-java">@Transactional
+public void lifecycleTour(Long postId) {
+    Post fresh = new Post(…);            // TRANSIENT
+    em.persist(fresh);                   // MANAGED — INSERT queued for flush
+
+    Post loaded = em.find(Post.class, postId);   // MANAGED (and now L1-cached)
+    loaded.setCaption("golden hour 🌅");         // still just a memory write
+
+    em.detach(loaded);                   // DETACHED — edits below are ignored
+    loaded.setCaption("this never persists");
+
+    Post merged = em.merge(loaded);      // copy state onto a MANAGED instance
+    em.remove(merged);                   // REMOVED — DELETE queued
+}                                        // commit → flush executes the SQL</code></pre></div>
+    <div class="ig"><div class="ig-in"><span class="ig-label">📸 The classic detached bug</span>
+      <p>Controller loads a <code class="inline">Post</code> in transaction A, stores it in an HTTP session, edits it during the next request, and… nothing saves. The entity went <em>detached</em> when tx A closed. Fix: re-load by id inside the new transaction (or <code class="inline">merge</code>), then edit.</p>
+    </div></div>
+  </div></div></div>
+</section>
+
+<!-- ============ 19 DIRTY CHECKING ============ -->
+<section class="sec" id="s19">
+  <button class="sec-head" aria-expanded="false"><span class="num">19</span><h2>Dirty checking, flush &amp; the first-level cache</h2><span class="badge b-adv">Advanced</span><span class="chev">▶</span></button>
+  <div class="sec-body"><div class="sec-inner"><div class="sec-content">
+    <p class="lead">Three behaviors of the persistence context that feel like magic until you name them: it <strong>remembers</strong> what it loaded (L1 cache), <strong>compares</strong> current state to a load-time snapshot (dirty checking), and <strong>writes the diff</strong> at flush time.</p>
+    <div class="codebox"><div class="codebar"><span class="fname">No save() call, yet it saves</span><button class="copy">copy</button></div>
+<pre class="language-java"><code class="language-java">@Transactional
+public void editCaption(Long postId, String newCaption) {
+    Post post = postRepository.findById(postId).orElseThrow();  // SELECT, snapshot taken
+    post.setCaption(newCaption);
+    // no repository.save(post) — commit flushes:
+    // UPDATE posts SET caption=? WHERE id=?        (dirty checking)
+}
+
+@Transactional(readOnly = true)
+public void l1CacheDemo(Long postId) {
+    Post a = postRepository.findById(postId).orElseThrow();  // SQL SELECT
+    Post b = postRepository.findById(postId).orElseThrow();  // NO SQL — L1 cache hit
+    assert a == b;      // same Java object: identity guarantee within one context
+}</code></pre></div>
+    <h3>When does flush actually happen?</h3>
+    <ul>
+      <li><strong>Commit</strong> — always.</li>
+      <li><strong>Before a JPQL/native query</strong> whose results could be affected by pending changes (so you never read stale data from your own tx).</li>
+      <li><strong>Manually</strong> — <code class="inline">em.flush()</code> / <code class="inline">repo.saveAndFlush()</code>, e.g., to force a constraint violation to surface <em>now</em>.</li>
+    </ul>
+    <div class="ig"><div class="ig-in"><span class="ig-label">📸 On Instagram</span>
+      <p>A moderation job loads a post, tweaks three fields based on rules, and just returns — three field changes become <em>one</em> UPDATE at commit. And within a "hydrate the post screen" transaction, five different helpers calling <code class="inline">findById(42)</code> cost one SELECT total.</p>
+    </div></div>
+    <div class="pit">The L1 cache is per-persistence-context, not global. Two concurrent requests each have their own; it protects you from re-querying <em>yourself</em>, not from seeing other users' committed changes. (The optional shared cache is L2 — a different, opt-in feature.)</div>
+  </div></div></div>
+</section>
+
+<!-- ============ 20 FETCH TYPES ============ -->
+<section class="sec" id="s20">
+  <button class="sec-head" aria-expanded="false"><span class="num">20</span><h2>Fetch types — LAZY vs EAGER</h2><span class="badge b-core">Core</span><span class="chev">▶</span></button>
+  <div class="sec-body"><div class="sec-inner"><div class="sec-content">
+    <p class="lead">EAGER loads the association with the owner, always, whether you use it or not. LAZY gives you a proxy that loads on first access — <em>if</em> the persistence context is still open. Defaults: <code class="inline">@ManyToOne</code>/<code class="inline">@OneToOne</code> are EAGER (bad), <code class="inline">@OneToMany</code>/<code class="inline">@ManyToMany</code> are LAZY (good).</p>
+    <div class="tip">House rule with no exceptions: <strong>declare everything LAZY</strong> (<code class="inline">@ManyToOne(fetch = FetchType.LAZY)</code>), then fetch eagerly <em>per query</em> where needed (JOIN FETCH / EntityGraph, ch. 27). EAGER is a global decision you can never undo per-use-case; LAZY is a default you can override anywhere.</div>
+    <div class="ig"><div class="ig-in"><span class="ig-label">📸 The LazyInitializationException, live</span>
+      <p>Service returns a <code class="inline">Post</code> entity; the JSON serializer later touches <code class="inline">post.getComments()</code> — but the transaction closed with the service method. Boom: <code class="inline">LazyInitializationException</code>. With <code class="inline">open-in-view: true</code> it "works" by silently querying during rendering — hiding an N+1 you'll rediscover at 3am.</p>
+    </div></div>
+    <div class="codebox"><div class="codebar"><span class="fname">The failure and the fix</span><button class="copy">copy</button></div>
+<pre class="language-java"><code class="language-java">// ❌ throws LazyInitializationException after tx ends
+@Transactional(readOnly = true)
+public Post broken(Long id) {
+    return postRepository.findById(id).orElseThrow();
+}   // caller later touches post.getComments() → proxy has no session
+
+// ✅ decide the fetch shape inside the transaction, return a DTO
+@Transactional(readOnly = true)
+public PostDetailDto detail(Long id) {
+    Post post = postRepository.findWithCommentsById(id).orElseThrow(); // ch.27 fetch join
+    return PostDetailDto.from(post);          // fully initialized before tx closes
+}</code></pre></div>
+    <div class="pit">EAGER doesn't just over-fetch — on collections it multiplies. Two EAGER <code class="inline">@OneToMany</code>s fetched with joins produce a cartesian product (<code class="inline">MultipleBagFetchException</code> with Lists, or silent row explosion with Sets).</div>
+  </div></div></div>
+</section>
+
+<!-- ============ 21 CASCADE ============ -->
+<section class="sec" id="s21">
+  <button class="sec-head" aria-expanded="false"><span class="num">21</span><h2>Cascade types &amp; orphanRemoval</h2><span class="badge b-core">Core</span><span class="chev">▶</span></button>
+  <div class="sec-body"><div class="sec-inner"><div class="sec-content">
+    <p class="lead">Cascading propagates persistence operations along a relationship: save the parent, children save too. It encodes <strong>ownership</strong> — use it only where the child's life is fully contained in the parent's.</p>
+    <table>
+      <tr><th>Type</th><th>Propagates</th><th>Instagram call</th></tr>
+      <tr><td><code>PERSIST</code></td><td>save parent → save new children</td><td>Post saved with its tagged-photo rows</td></tr>
+      <tr><td><code>MERGE</code></td><td>merge parent → merge children</td><td>Editing detached post + comments together</td></tr>
+      <tr><td><code>REMOVE</code></td><td>delete parent → delete children</td><td>Delete post → delete its comments</td></tr>
+      <tr><td><code>ALL</code></td><td>all of the above (+ refresh/detach)</td><td>True parent-child compositions only</td></tr>
+    </table>
+    <div class="codebox"><div class="codebar"><span class="fname">Post.java — comments live and die with the post</span><button class="copy">copy</button></div>
+<pre class="language-java"><code class="language-java">@OneToMany(mappedBy = "post",
+           cascade = CascadeType.ALL,
+           orphanRemoval = true)
+private List&lt;Comment&gt; comments = new ArrayList&lt;&gt;();
+
+// delete a single comment: just unlink it
+post.getComments().remove(comment);   // orphanRemoval → DELETE FROM comments …
+
+// delete the post: comments cascade-deleted, no manual cleanup
+postRepository.delete(post);</code></pre></div>
+    <p><strong>orphanRemoval vs CascadeType.REMOVE:</strong> REMOVE fires only when the <em>parent</em> is deleted. orphanRemoval additionally deletes a child the moment it's <em>unlinked</em> from the collection. "Remove comment from post" is exactly that unlink.</p>
+    <div class="ig"><div class="ig-in"><span class="ig-label">📸 The direction matters</span>
+      <p>Post → Comments: cascade ✓ (comments are meaningless without their post). Comment → User or Post → User: cascade ✗ — imagine <code class="inline">CascadeType.REMOVE</code> on <code class="inline">Post.user</code>: deleting one photo deletes the <em>account</em>. Cascade flows from owner to owned, never toward shared entities.</p>
+    </div></div>
+    <div class="pit">Cascade REMOVE deletes row-by-row through Hibernate (N DELETEs + memory). For a post with 50k comments, prefer a bulk <code class="inline">@Modifying DELETE FROM Comment c WHERE c.post.id = :id</code>, or let an <code class="inline">ON DELETE CASCADE</code> FK do it in the database.</div>
+  </div></div></div>
+</section>
+<div class="part-head">Part V — Advanced</div>
+
+<!-- ============ 22 LOCKING ============ -->
+<section class="sec" id="s22">
+  <button class="sec-head" aria-expanded="false"><span class="num">22</span><h2>Optimistic &amp; pessimistic locking</h2><span class="badge b-adv">Advanced</span><span class="chev">▶</span></button>
+  <div class="sec-body"><div class="sec-inner"><div class="sec-content">
+    <p class="lead">Two answers to concurrent writes. <strong>Optimistic:</strong> assume conflicts are rare — version-stamp the row, detect collisions at commit, retry the loser. <strong>Pessimistic:</strong> assume conflicts are likely — take a DB row lock (<code class="inline">SELECT … FOR UPDATE</code>) so others wait.</p>
+    <div class="ig"><div class="ig-in"><span class="ig-label">📸 Two moderators, one caption</span>
+      <p>Both open post #42, both edit, both save. Without locking, the second save silently erases the first (<strong>lost update</strong>). With <code class="inline">@Version</code>, the second save fails loudly and the moderator re-fetches. Meanwhile "reserve this username" during signup is contention-by-design → pessimistic lock.</p>
+    </div></div>
+    <div class="codebox"><div class="codebar"><span class="fname">Optimistic — @Version + retry</span><button class="copy">copy</button></div>
+<pre class="language-java"><code class="language-java">@Entity
+public class Post {
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Version                     // Hibernate manages it; never set it yourself
+    private Long version;
+    …
+}
+// UPDATE posts SET caption=?, version=6 WHERE id=? AND version=5
+// 0 rows matched → ObjectOptimisticLockingFailureException
+
+@Retryable(retryFor = ObjectOptimisticLockingFailureException.class,
+           maxAttempts = 3, backoff = @Backoff(delay = 50))
+@Transactional
+public void editCaption(Long postId, String caption) {
+    Post post = posts.findById(postId).orElseThrow();   // fresh version each attempt
+    post.setCaption(caption);
+}</code></pre></div>
+    <div class="codebox"><div class="codebar"><span class="fname">Pessimistic — SELECT … FOR UPDATE</span><button class="copy">copy</button></div>
+<pre class="language-java"><code class="language-java">public interface UsernameReservationRepository
+        extends JpaRepository&lt;UsernameReservation, String&gt; {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)          // → FOR UPDATE
+    @QueryHints(@QueryHint(name = "jakarta.persistence.lock.timeout", value = "3000"))
+    Optional&lt;UsernameReservation&gt; findByHandle(String handle);
+}
+
+@Transactional
+public void claim(String handle, Long userId) {
+    UsernameReservation r = reservations.findByHandle(handle)   // row locked
+            .orElseThrow(HandleUnavailableException::new);
+    r.assignTo(userId);        // concurrent claimers block until commit
+}</code></pre></div>
+    <table>
+      <tr><th></th><th>Optimistic (@Version)</th><th>Pessimistic (@Lock)</th></tr>
+      <tr><td>Conflict frequency</td><td class="ok">rare</td><td class="mid">frequent / must not fail</td></tr>
+      <tr><td>Cost when calm</td><td class="ok">~zero</td><td class="no">locks + waiting always</td></tr>
+      <tr><td>Failure mode</td><td>exception → retry</td><td>blocking, timeouts, deadlocks</td></tr>
+      <tr><td>Works across requests?</td><td class="ok">yes (send version to client)</td><td class="no">no — lock dies with the tx</td></tr>
+    </table>
+    <div class="pit">Don't solve <em>counters</em> with either: <code class="inline">like_count++</code> via load-modify-save under @Version just retries forever on hot posts. Use an atomic <code class="inline">UPDATE posts SET like_count = like_count + 1 WHERE id = :id</code> — the DB serializes it for free.</div>
+  </div></div></div>
+</section>
+
+<!-- ============ 23 INDEXES ============ -->
+<section class="sec" id="s23">
+  <button class="sec-head" aria-expanded="false"><span class="num">23</span><h2>Indexes &amp; constraints</h2><span class="badge b-adv">Advanced</span><span class="chev">▶</span></button>
+  <div class="sec-body"><div class="sec-inner"><div class="sec-content">
+    <p class="lead">Constraints make bad data impossible; indexes make good queries fast. JPA can declare both on the entity — useful as living documentation and for <code class="inline">ddl-auto: validate</code> — but the <em>authoritative</em> definition belongs in your Flyway migration.</p>
+    <div class="codebox"><div class="codebar"><span class="fname">Post.java + V3__indexes.sql</span><button class="copy">copy</button></div>
+<pre class="language-java"><code class="language-java">@Entity
+@Table(name = "posts",
+    indexes = {
+        // profile grid + keyset feed: WHERE user_id = ? ORDER BY created_at DESC
+        @Index(name = "idx_posts_user_created",
+               columnList = "user_id, created_at DESC")
+    })
+public class Post { … }
+
+@Entity
+@Table(name = "likes",
+    uniqueConstraints = @UniqueConstraint(name = "uq_like_user_post",
+                                          columnNames = {"user_id", "post_id"}),
+    indexes = @Index(name = "idx_likes_post", columnList = "post_id"))
+public class Like { … }</code></pre></div>
+<div class="codebox"><div class="codebar"><span class="fname">V3__indexes.sql (Flyway — the real source of truth)</span><button class="copy">copy</button></div>
+<pre class="language-sql"><code class="language-sql">CREATE INDEX idx_posts_user_created ON posts (user_id, created_at DESC);
+ALTER TABLE likes ADD CONSTRAINT uq_like_user_post UNIQUE (user_id, post_id);
+CREATE INDEX idx_likes_post ON likes (post_id);   -- countByPostId</code></pre></div>
+    <div class="ig"><div class="ig-in"><span class="ig-label">📸 Why (user_id, created_at) and not two indexes</span>
+      <p>The profile grid runs <code class="inline">WHERE user_id = 7 ORDER BY created_at DESC LIMIT 12</code>. The composite index satisfies filter <em>and</em> sort in one B-tree walk — no filesort. Order matters (<strong>leftmost prefix rule</strong>): it also serves plain <code class="inline">WHERE user_id = ?</code>, but not <code class="inline">WHERE created_at &gt; ?</code> alone.</p>
+    </div></div>
+    <div class="tip">The unique constraint on <code class="inline">likes(user_id, post_id)</code> is your <em>correctness</em> layer for double-tap races: two concurrent likes → one INSERT succeeds, one throws <code class="inline">DataIntegrityViolationException</code> which you map to a harmless 200/409 (ch. 29). Application-level "check then insert" alone can never guarantee this.</div>
+    <div class="pit">MySQL creates an index for every FK automatically — but doesn't drop your redundant ones. And every extra index taxes each INSERT on a write-heavy table like <code class="inline">likes</code>. Index for the queries you actually run, verified with <code class="inline">EXPLAIN</code>.</div>
+  </div></div></div>
+</section>
+
+<!-- ============ 24 PROJECTIONS ============ -->
+<section class="sec" id="s24">
+  <button class="sec-head" aria-expanded="false"><span class="num">24</span><h2>DTO projections</h2><span class="badge b-adv">Advanced</span><span class="chev">▶</span></button>
+  <div class="sec-body"><div class="sec-inner"><div class="sec-content">
+    <p class="lead">Stop loading entities when you only need columns. Projections make the SELECT fetch exactly the fields a screen needs — less I/O, less memory, no lazy-loading traps, and read-only by construction.</p>
+    <div class="ig"><div class="ig-in"><span class="ig-label">📸 A feed card ≠ a Post entity</span>
+      <p>The feed shows: post id, image, caption, author's username + avatar, like count. It does <em>not</em> need the full Post + User + Profile object graph with change-tracking snapshots. At 50 cards per scroll × millions of scrolls, projections are the difference.</p>
+    </div></div>
+    <div class="codebox"><div class="codebar"><span class="fname">Interface + record projections</span><button class="copy">copy</button></div>
+<pre class="language-java"><code class="language-java">// 1) Interface projection — Spring derives the SELECT from getter names
+public interface PostCard {
+    Long getId();
+    String getImageUrl();
+    String getCaption();
+    String getUserUsername();          // nested path: post.user.username
+}
+Slice&lt;PostCard&gt; findByUserId(Long userId, Pageable pageable);
+// SELECT p.id, p.image_url, p.caption, u.username FROM posts p JOIN users u …
+
+// 2) Record via JPQL constructor expression — explicit, supports aggregates
+public record FeedCard(Long id, String imageUrl, String caption,
+                       String username, long likeCount) {}
+
+@Query("""
+    SELECT new com.insta.feed.FeedCard(
+        p.id, p.imageUrl, p.caption, p.user.username,
+        (SELECT COUNT(l) FROM Like l WHERE l.post = p))
+    FROM Post p
+    WHERE p.user.id IN :ids
+    ORDER BY p.createdAt DESC
+    """)
+Slice&lt;FeedCard&gt; feedCards(@Param("ids") List&lt;Long&gt; ids, Pageable pageable);
+
+// 3) Dynamic projection — one method, caller picks the shape
+&lt;T&gt; Slice&lt;T&gt; findByUserId(Long userId, Pageable pageable, Class&lt;T&gt; type);</code></pre></div>
+    <div class="pit">Open (SpEL) interface projections like <code class="inline">@Value("#{target.user.username}")</code> quietly load the <em>whole entity</em> first, then project in memory — you lose the entire benefit. Stick to closed projections (plain getters / constructor expressions) and verify the generated SELECT in the SQL log.</div>
+    <div class="tip">Team rule that pays off: <strong>entities for writes, projections for reads.</strong> Controllers should never see an <code class="inline">@Entity</code> — it also stops accidental lazy-loading during JSON serialization (ch. 20).</div>
+  </div></div></div>
+</section>
+
+<!-- ============ 25 AUDITING ============ -->
+<section class="sec" id="s25">
+  <button class="sec-head" aria-expanded="false"><span class="num">25</span><h2>Auditing — created/modified, by whom</h2><span class="badge b-adv">Advanced</span><span class="chev">▶</span></button>
+  <div class="sec-body"><div class="sec-inner"><div class="sec-content">
+    <p class="lead">Spring Data fills <code class="inline">createdAt / updatedAt / createdBy / updatedBy</code> automatically via an entity listener. Define it once in a <code class="inline">@MappedSuperclass</code>, extend it everywhere, and stop hand-setting timestamps.</p>
+    <div class="codebox"><div class="codebar"><span class="fname">Auditable.java + config</span><button class="copy">copy</button></div>
+<pre class="language-java"><code class="language-java">@MappedSuperclass
+@EntityListeners(AuditingEntityListener.class)
+public abstract class Auditable {
+
+    @CreatedDate
+    @Column(nullable = false, updatable = false)
+    private Instant createdAt;
+
+    @LastModifiedDate
+    private Instant updatedAt;
+
+    @CreatedBy
+    @Column(updatable = false)
+    private Long createdBy;            // user id
+
+    @LastModifiedBy
+    private Long updatedBy;
+}
+
+@Configuration
+@EnableJpaAuditing                     // don't forget this switch
+class AuditConfig {
+    @Bean
+    AuditorAware&lt;Long&gt; auditorProvider() {      // "who is acting?"
+        return () -&gt; Optional.ofNullable(SecurityContextHolder.getContext())
+                .map(ctx -&gt; (InstaPrincipal) ctx.getAuthentication().getPrincipal())
+                .map(InstaPrincipal::userId);
+    }
+}
+
+@Entity public class Post    extends Auditable { … }
+@Entity public class Comment extends Auditable { … }</code></pre></div>
+    <div class="ig"><div class="ig-in"><span class="ig-label">📸 On Instagram</span>
+      <p>"Edited" labels on captions come from <code class="inline">updatedAt &gt; createdAt</code>. When trust-and-safety asks "who changed this post's caption and when?", <code class="inline">updatedBy + updatedAt</code> answers without any extra code on any write path.</p>
+    </div></div>
+    <div class="tip">Need row-level <em>history</em> (every version, not just the last touch)? That's Hibernate Envers (<code class="inline">@Audited</code>) or an append-only events table — Spring auditing tracks only the latest state.</div>
+  </div></div></div>
+</section>
+
+<!-- ============ 26 BATCH ============ -->
+<section class="sec" id="s26">
+  <button class="sec-head" aria-expanded="false"><span class="num">26</span><h2>Batch processing</h2><span class="badge b-adv">Advanced</span><span class="chev">▶</span></button>
+  <div class="sec-body"><div class="sec-inner"><div class="sec-content">
+    <p class="lead">Writing 100k rows one INSERT at a time is 100k network round-trips. JDBC batching groups statements per trip; the persistence context just needs periodic draining so it doesn't hoard every entity in memory.</p>
+    <div class="codebox"><div class="codebar"><span class="fname">application.yml — the three switches</span><button class="copy">copy</button></div>
+<pre class="language-yaml"><code class="language-yaml">spring:
+  datasource:
+    # MySQL-specific: rewrites N inserts into one multi-row INSERT ⚡
+    url: jdbc:mysql://localhost:3306/instagram?rewriteBatchedStatements=true
+  jpa:
+    properties:
+      hibernate:
+        jdbc.batch_size: 50
+        order_inserts: true        # group same-table inserts together
+        order_updates: true</code></pre></div>
+    <div class="codebox"><div class="codebar"><span class="fname">Chunked import with flush + clear</span><button class="copy">copy</button></div>
+<pre class="language-java"><code class="language-java">@Transactional
+public void importFollowers(Long userId, List&lt;Long&gt; followerIds) {
+    User following = users.getReferenceById(userId);
+    int i = 0;
+    for (Long fid : followerIds) {
+        em.persist(new Follow(users.getReferenceById(fid), following));
+        if (++i % 50 == 0) {       // align with jdbc.batch_size
+            em.flush();            // push the batch over the wire
+            em.clear();            // drop managed entities → flat memory
+        }
+    }
+}</code></pre></div>
+    <div class="ig"><div class="ig-in"><span class="ig-label">📸 Account-migration day</span>
+      <p>A creator imports 500k followers from another platform. Naive save loop: ~500k round-trips and an OOM as the persistence context accumulates every <code class="inline">Follow</code>. Batched + chunked: ~10k round-trips, constant memory, one transaction (or chunk-per-transaction for restartability).</p>
+    </div></div>
+    <div class="pit">The chapter-04 trade-off bites here: <strong><code class="inline">GenerationType.IDENTITY</code> disables Hibernate's INSERT batching</strong> (each insert must run to learn its id). Options on MySQL: accept it for normal traffic and drop to <code class="inline">JdbcTemplate.batchUpdate</code> for true bulk jobs, or pre-assign ids (app-generated). Also: <code class="inline">saveAll()</code> alone is <em>not</em> batching — without <code class="inline">jdbc.batch_size</code> it's just a loop.</div>
+  </div></div></div>
+</section>
+
+<!-- ============ 27 PERFORMANCE ============ -->
+<section class="sec" id="s27">
+  <button class="sec-head" aria-expanded="false"><span class="num">27</span><h2>The N+1 problem, fetch joins &amp; entity graphs</h2><span class="badge b-adv">Advanced</span><span class="chev">▶</span></button>
+  <div class="sec-body"><div class="sec-inner"><div class="sec-content">
+    <p class="lead">The signature ORM failure: load N posts (1 query), then touch <code class="inline">post.getUser()</code> on each — N more queries. Invisible in dev with 5 rows, a database killer with 50. The fix is always the same idea: <strong>tell the query up front what shape you need.</strong></p>
+    <div class="codebox"><div class="codebar"><span class="fname">Watch it happen in the SQL log</span><button class="copy">copy</button></div>
+<pre class="language-java"><code class="language-java">List&lt;Post&gt; feed = postRepository.findTop50ByOrderByCreatedAtDesc();
+feed.forEach(p -&gt; System.out.println(p.getUser().getUsername()));
+
+-- select ... from posts order by created_at desc limit 50     (1)
+-- select ... from users where id = 101                        (+1)
+-- select ... from users where id = 87                         (+1)
+-- ... 48 more                                                 = 51 queries 💀</code></pre></div>
+    <h3>The fixes, in order of preference</h3>
+    <div class="codebox"><div class="codebar"><span class="fname">Fetch join · EntityGraph · batch size · projection</span><button class="copy">copy</button></div>
+<pre class="language-java"><code class="language-java">// 1) JOIN FETCH — one query, association populated
+@Query("""
+    SELECT p FROM Post p
+    JOIN FETCH p.user u
+    JOIN FETCH u.profile
+    ORDER BY p.createdAt DESC
+    """)
+List&lt;Post&gt; feedWithAuthors(Pageable pageable);
+
+// 2) @EntityGraph — same effect, keeps derived-method ergonomics
+@EntityGraph(attributePaths = {"user", "user.profile"})
+Slice&lt;Post&gt; findByUserIdIn(List&lt;Long&gt; ids, Pageable pageable);
+
+// 3) Global safety net — turns N+1 into N/100+1 via IN-clauses
+//    application.yml → hibernate.default_batch_fetch_size: 100
+
+// 4) Best for pure reads: skip entities entirely (ch. 24 projection)</code></pre></div>
+    <div class="ig"><div class="ig-in"><span class="ig-label">📸 On Instagram</span>
+      <p>Feed = posts + author + author's avatar. Rule of thumb: <strong>fetch-join the to-one path</strong> (user, profile), <strong>batch or count-query the to-many path</strong> (comments preview, like counts) — and for the hot feed itself, a projection beats all of it.</p>
+    </div></div>
+    <div class="pit"><strong>Fetch join on a collection + Pageable = in-memory pagination.</strong> Hibernate logs <code class="inline">HHH90003004 firstResult/maxResults specified with collection fetch; applying in memory</code> — it loads <em>everything</em>, then slices in the JVM. Fix with the two-step pattern: page over ids first, then fetch the graph for just those ids (<code class="inline">WHERE p.id IN :pageIds</code>). To-one fetch joins paginate fine.</div>
+    <div class="tip">Make N+1 a test failure, not a prod incident: with Hypersistence Utils' <code class="inline">SQLStatementCountValidator</code> (or datasource-proxy), assert <code class="inline">assertSelectCount(1)</code> on feed-shaped queries in integration tests.</div>
+  </div></div></div>
+</section>
+<div class="part-head">Part VI — Production-grade</div>
+
+<!-- ============ 28 VALIDATION ============ -->
+<section class="sec" id="s28">
+  <button class="sec-head" aria-expanded="false"><span class="num">28</span><h2>Validation</h2><span class="badge b-core">Core</span><span class="chev">▶</span></button>
+  <div class="sec-body"><div class="sec-inner"><div class="sec-content">
+    <p class="lead">Three defensive rings: <strong>Bean Validation on request DTOs</strong> (reject bad input at the door, per-field errors), optional entity-level annotations (Hibernate validates before flush), and <strong>DB constraints</strong> as the final, race-proof authority.</p>
+    <div class="codebox"><div class="codebar"><span class="fname">SignupRequest.java + controller</span><button class="copy">copy</button></div>
+<pre class="language-java"><code class="language-java">public record SignupRequest(
+
+    @NotBlank
+    @Size(min = 3, max = 30)
+    @Pattern(regexp = "^[a-z0-9._]+$",
+             message = "lowercase letters, digits, dots and underscores only")
+    String username,
+
+    @NotBlank @Email
+    String email,
+
+    @NotBlank @Size(min = 8, max = 72)
+    String password
+) {}
+
+public record CreatePostRequest(
+    @NotBlank @Size(max = 2200) String caption,     // Instagram's real cap
+    @NotNull @URL String imageUrl
+) {}
+
+@PostMapping("/api/signup")
+public UserResponse signup(@Valid @RequestBody SignupRequest req) {   // @Valid triggers it
+    return userService.register(req);
+}</code></pre></div>
+    <div class="ig"><div class="ig-in"><span class="ig-label">📸 Why all three rings</span>
+      <p>DTO validation gives the app a friendly "username must be 3–30 chars" per field. But two people submitting <code class="inline">@purus</code> in the same millisecond both pass <code class="inline">existsByUsername</code> — only the <strong>unique constraint</strong> (ch. 23) settles that race. Validation is UX; constraints are truth.</p>
+    </div></div>
+    <div class="tip">Validate <em>requests</em>, not entities, as your primary line: by the time an entity fails validation you're mid-flush inside a transaction, and the error is uglier to map. Groups (<code class="inline">@Validated(OnCreate.class)</code>) handle create-vs-update rule differences.</div>
+  </div></div></div>
+</section>
+
+<!-- ============ 29 EXCEPTIONS ============ -->
+<section class="sec" id="s29">
+  <button class="sec-head" aria-expanded="false"><span class="num">29</span><h2>Exception handling</h2><span class="badge b-core">Core</span><span class="chev">▶</span></button>
+  <div class="sec-body"><div class="sec-inner"><div class="sec-content">
+    <p class="lead">One <code class="inline">@RestControllerAdvice</code> translates persistence-layer exceptions into stable HTTP semantics. The API contract stays clean even when the cause is three layers down in Hibernate.</p>
+    <div class="codebox"><div class="codebar"><span class="fname">GlobalExceptionHandler.java</span><button class="copy">copy</button></div>
+<pre class="language-java"><code class="language-java">@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    // 400 — validation failures, field-by-field
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Map&lt;String, String&gt; invalid(MethodArgumentNotValidException ex) {
+        return ex.getBindingResult().getFieldErrors().stream()
+                 .collect(Collectors.toMap(FieldError::getField,
+                                           FieldError::getDefaultMessage,
+                                           (a, b) -&gt; a));
+    }
+
+    // 404 — our own domain exception
+    @ExceptionHandler(PostNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ApiError notFound(PostNotFoundException ex) {
+        return new ApiError("POST_NOT_FOUND", ex.getMessage());
+    }
+
+    // 409 — unique constraint hit (double-like, taken username)
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ApiError conflict(DataIntegrityViolationException ex) {
+        return new ApiError("CONFLICT", "That action collides with existing data");
+    }
+
+    // 409 — optimistic lock lost (ch. 22)
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ApiError staleEdit(ObjectOptimisticLockingFailureException ex) {
+        return new ApiError("STALE_EDIT", "Content changed — reload and retry");
+    }
+}</code></pre></div>
+    <div class="ig"><div class="ig-in"><span class="ig-label">📸 The double-tap race, resolved politely</span>
+      <p>Two ❤️ taps race past <code class="inline">existsBy…</code>; the second INSERT trips <code class="inline">uq_like_user_post</code> → <code class="inline">DataIntegrityViolationException</code> → 409 (or treat as idempotent success). No stack trace leaks, no 500, the heart stays red.</p>
+    </div></div>
+    <div class="pit">Know the translation chain: Hibernate's <code class="inline">ConstraintViolationException</code> arrives wrapped as Spring's <code class="inline">DataIntegrityViolationException</code>. And repository <code class="inline">getReferenceById</code> throws <code class="inline">EntityNotFoundException</code> only when the proxy is first <em>touched</em> — possibly far from the call site. Prefer <code class="inline">findById().orElseThrow(yourDomainException)</code> at API boundaries.</div>
+  </div></div></div>
+</section>
+
+<!-- ============ 30 BEST PRACTICES ============ -->
+<section class="sec" id="s30">
+  <button class="sec-head" aria-expanded="false"><span class="num">30</span><h2>Best practices &amp; common pitfalls — the checklist</h2><span class="badge b-core">Core</span><span class="chev">▶</span></button>
+  <div class="sec-body"><div class="sec-inner"><div class="sec-content">
+    <p class="lead">The whole guide compressed into review-comment form. If a PR violates one of these, you now know the chapter that explains why.</p>
+    <h3>Mapping</h3>
+    <ul>
+      <li><strong>LAZY everything</strong>, fetch per-query with JOIN FETCH / EntityGraph. <em>(ch. 20, 27)</em></li>
+      <li><strong>Unbounded collections are queries, not fields</strong> — never <code class="inline">Set&lt;User&gt; likedBy</code> on Post. <em>(ch. 06, 07)</em></li>
+      <li>Join table needs its own data (timestamps)? <strong>Promote it to an entity.</strong> <em>(ch. 07)</em></li>
+      <li><code class="inline">EnumType.STRING</code>, always. Sync helpers on bidirectional links. <em>(ch. 04, 06)</em></li>
+      <li>Careful with Lombok on entities: <code class="inline">@Data</code>'s equals/hashCode/toString touch lazy fields → surprise queries, <code class="inline">LazyInitializationException</code>, or infinite recursion. Use <code class="inline">@Getter @Setter</code> and hand-write identity (stable business key or id-with-null-guard).</li>
+    </ul>
+    <h3>Querying</h3>
+    <ul>
+      <li><strong>Paginate every list endpoint.</strong> Feeds use <code class="inline">Slice</code>/keyset, not deep OFFSET. <em>(ch. 14)</em></li>
+      <li>Entities for writes, <strong>projections for reads</strong>. Controllers never see <code class="inline">@Entity</code>. <em>(ch. 24)</em></li>
+      <li>Log SQL in dev (<code class="inline">org.hibernate.SQL: debug</code>) and actually read it — count queries per endpoint. <em>(ch. 02, 27)</em></li>
+      <li>Existence/count questions use <code class="inline">existsBy… / countBy…</code>, never "load and check". <em>(ch. 09)</em></li>
+    </ul>
+    <h3>Transactions &amp; concurrency</h3>
+    <ul>
+      <li><code class="inline">@Transactional</code> on services; <code class="inline">readOnly = true</code> on reads; know the checked-exception rollback trap. <em>(ch. 15)</em></li>
+      <li>No self-invocation of transactional/locked methods — the proxy can't see it. <em>(ch. 15, 16)</em></li>
+      <li>Counters → atomic UPDATE; user-edited rows → <code class="inline">@Version</code>; must-not-fail claims → pessimistic lock. <em>(ch. 22)</em></li>
+      <li>Uniqueness under concurrency is a <strong>DB constraint</strong>, never just a pre-check. <em>(ch. 23, 28)</em></li>
+    </ul>
+    <h3>Operations</h3>
+    <ul>
+      <li><code class="inline">open-in-view: false</code>. <code class="inline">ddl-auto: validate</code> + Flyway in prod. <em>(ch. 02)</em></li>
+      <li>Keep transactions short: no HTTP/Kafka/S3 calls inside a tx — you're holding a pool connection (and maybe row locks) the whole time.</li>
+      <li>Batch bulk writes; remember IDENTITY's insert-batching cost. <em>(ch. 26)</em></li>
+      <li>Pool sized to reality (~cores×2 per instance), verified under load — not 100.</li>
+    </ul>
+    <div class="ig"><div class="ig-in"><span class="ig-label">📸 The one-paragraph interview answer</span>
+      <p>"I map lazily and shape each query explicitly; reads return projections, writes go through short service-layer transactions; correctness lives in constraints and versions, not pre-checks; and I treat the SQL log + EXPLAIN as part of code review." Say that and mean it — the rest of this page is the receipts.</p>
+    </div></div>
+  </div></div></div>
+</section>
+
+</div>
+</main>
+
+<footer>Built as a single-file guide · MySQL 8 · Spring Boot 3 · Hibernate 6 · All examples: one Instagram clone</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-yaml.min.js"></script>
+<script>
+(function(){
+  var secs = Array.prototype.slice.call(document.querySelectorAll('.sec'));
+  var tocLinks = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+
+  function setOpen(sec, open){
+    sec.classList.toggle('open', open);
+    var head = sec.querySelector('.sec-head');
+    if (head) head.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
+  // toggle on header click
+  secs.forEach(function(sec){
+    sec.querySelector('.sec-head').addEventListener('click', function(){
+      setOpen(sec, !sec.classList.contains('open'));
+    });
+  });
+
+  // expand / collapse all
+  document.getElementById('expandAll').addEventListener('click', function(){
+    secs.forEach(function(s){ setOpen(s, true); });
+  });
+  document.getElementById('collapseAll').addEventListener('click', function(){
+    secs.forEach(function(s){ setOpen(s, false); });
+  });
+
+  // TOC: open target before jump; close mobile nav
+  var sidebar = document.getElementById('sidebar');
+  tocLinks.forEach(function(a){
+    a.addEventListener('click', function(){
+      var target = document.querySelector(a.getAttribute('href'));
+      if (target) setOpen(target, true);
+      sidebar.classList.remove('openNav');
+    });
+  });
+  if (location.hash){
+    var t = document.querySelector(location.hash);
+    if (t && t.classList.contains('sec')) setOpen(t, true);
+  }
+
+  // scrollspy
+  if ('IntersectionObserver' in window){
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if (e.isIntersecting){
+          tocLinks.forEach(function(a){
+            a.classList.toggle('active', a.getAttribute('href') === '#' + e.target.id);
+          });
+        }
+      });
+    }, { rootMargin: '-20% 0px -70% 0px' });
+    secs.forEach(function(s){ io.observe(s); });
+  }
+
+  // search filter
+  var search = document.getElementById('search');
+  search.addEventListener('input', function(){
+    var q = search.value.trim().toLowerCase();
+    tocLinks.forEach(function(a){
+      a.classList.toggle('hidden', q !== '' && a.textContent.toLowerCase().indexOf(q) === -1);
+    });
+    // hide part labels whose links are all hidden
+    document.querySelectorAll('.toc-part').forEach(function(part){
+      var el = part.nextElementSibling, any = false;
+      while (el && !el.classList.contains('toc-part')){
+        if (el.tagName === 'A' && !el.classList.contains('hidden')) { any = true; break; }
+        el = el.nextElementSibling;
+      }
+      part.style.display = any ? '' : 'none';
+    });
+  });
+  document.addEventListener('keydown', function(e){
+    if (e.key === '/' && document.activeElement !== search &&
+        !/input|textarea/i.test(document.activeElement.tagName)){
+      e.preventDefault(); search.focus();
+    }
+  });
+
+  // copy buttons
+  document.querySelectorAll('.copy').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var code = btn.closest('.codebox').querySelector('pre code');
+      if (!code) return;
+      var text = code.textContent;
+      function done(){ btn.textContent = 'copied ✓'; setTimeout(function(){ btn.textContent = 'copy'; }, 1500); }
+      if (navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(done);
+      } else {
+        var ta = document.createElement('textarea');
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); done(); } catch(e){}
+        document.body.removeChild(ta);
+      }
+    });
+  });
+
+  // progress bar
+  var bar = document.getElementById('progress');
+  function onScroll(){
+    var h = document.documentElement;
+    var max = h.scrollHeight - h.clientHeight;
+    bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + '%';
+  }
+  document.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  // mobile nav
+  document.getElementById('menuBtn').addEventListener('click', function(){
+    sidebar.classList.toggle('openNav');
+  });
+})();
+</script>
+</body>
+</html>
